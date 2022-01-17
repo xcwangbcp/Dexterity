@@ -1,7 +1,7 @@
-function [trial_count] = TrialCount(fps,raw_hand,raw_apple,raw_slit)
+function [trial_count] = TrialCount(raw_hand,raw_apple,raw_slit)
 %hand from left only
 %all plot() only for giving explanations
-
+fps = 60;
 raw_hand(find(raw_hand(:,24)<0.95),22:24) = nan;
 raw_apple(find(raw_apple(:,3)<0.95),1:3) = nan;
 

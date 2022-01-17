@@ -1,4 +1,4 @@
-function [trial_count,t] = TrialCount(raw_hand,raw_apple,slit_line,Edge)
+function [trial_count,t] = TrialCountv1(raw_hand,raw_apple,slit_line,Edge)
 %hand from left only
 %all plot() only for giving explanations
 %slit_line = [a,b] x=ay+b
