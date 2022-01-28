@@ -4,12 +4,12 @@ function [trial_count,t] = TrialCountv1(raw_hand,raw_apple,slit_line,Edge)
 %slit_line = [a,b] x=ay+b
 
 raw_hand(find(raw_hand(:,24)<0.95),22:24) = nan;
-raw_apple(find(raw_apple(:,3)<0.95),:) = nan;
+raw_apple(find(raw_apple(:,9)<0.95),:) = nan;
 
 TIP2 = movmean(raw_hand(:,22:23),9);
-apple_start = raw_apple(:,1:2);
+apple_start = raw_apple(:,7:8);
 time = 1:size(apple_start,1);
-time = time;
+
 %cleaning test
 %nanmean(apple_start(:,1))
 %nanstd(apple_start(:,1))
@@ -67,17 +67,20 @@ time_fwd=[]; time_back=[];
 
 
 p=0;q=0;
-for i = 9:size(apple_start,1)-1
-    if TIP2(i,1) <= Edge && TIP2(i+1,1) >= Edge&&TIP2(i+10,1)>Edge%&& sum(isnan(apple_start(i-8:i))) > 0
+for i = 9:size(apple_start,1)
+    if TIP2(i,1) <= Edge && TIP2(i+1,1) >= Edge%&&TIP2(i+10,1)>Edge%&& sum(isnan(apple_start(i-8:i))) > 0
         time_fwd =[time_fwd,i];
         trial_count = trial_count+1;
         hold on
         p=p+1;
         text(Edge-15,i,[num2str(p),'\rightarrow'],'Color','red','FontSize',15)
-        j=i+5;
+        j=i;
         while 1
             
             j=j+1
+            if j>size(apple_start,1)
+                break
+            end
             if TIP2(j,1) >= Edge && TIP2(j+1,1) <= Edge
                 
                 time_back = [time_back,j];
