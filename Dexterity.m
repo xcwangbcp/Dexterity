@@ -1,14 +1,15 @@
 close all
 clear 
 
-[filename_raw_hand,pathname] = uigetfile('*.csv','Pick a csv file to load in ');
-[raw,Txt,~]     = xlsread([pathname,filename_raw_hand]);
-
+[filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in ');
+[raw_hand,Txt_hand,~]        = xlsread([pathname,filename_raw_hand]);
+filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
+[raw_apple,Txt_apple,~]      = xlsread([pathname,filename_raw_apple]);
 % filename_raw_hand  =  'D:\Code\Data\Apple\2-trimmed.csv';
-filename_raw_apple = 'D:\Code\Data\Apple\2-trimmed-apple.csv';
+% filename_raw_apple = 'D:\Code\Data\Apple\2-trimmed-apple.csv';
 % Acrylic_Edge        = 'D:\Code\Dexterity\137LS_trimmed_cam1.csv';
 % raw_hand  = table2array(readtable([pathname,filename_raw_hand]));
-raw_apple = table2array(readtable(filename_raw_apple));
+% raw_apple = table2array(readtable(filename_raw_apple));
 % Edge_raw  = table2array(readtable(Acrylic_Edge));
 Edge(:,1)  = mean(raw_apple(:,1));
 Edge(:,2)  = mean(raw_apple(:,4));
@@ -21,17 +22,28 @@ Edge       = mean(Edge);
 % M.MCP2   = findcolum(Txt,'MCP2_x','MCP2_y','MCP2_p');
 % M.PIP2   = findcolum(Txt,'PIP2_x','PIP2_y','PIP2_p');
 % M.DIP2   = findcolum(Txt,'DIP2_x','DIP2_y','DIP2_p');
-M.tip2   = findcolum(Txt,'tip2_x','tip2_y','tip2_p'); % indexfinger tip 
-index_tip= raw(:,M.tip2(1));
-% index_tip= movmean(index_tip,9);
-apple_p    = raw_apple(:,end);
-apple      = raw_apple(:,7);
-apple(apple_p<0.5)=nan;
-index_tip  = index_tip(apple_p>0.5);
+M.tip2    = findcolum(Txt_hand,'tip2_x','tip2_y','tip2_p'); % indexfinger tip 
+index_tip = raw_hand(:,M.tip2(1));
+% index_tip = movmean(index_tip,9);
+% index_tip = index_tip(apple_p>0.5);
+M.apple   = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
+apple     = raw_apple(:,M.apple(1));
 % apple    = movmean(apple,9);
+apple_p   = raw_apple(:,M.apple(3));
+threshold = 0.5;
+apple(apple_p<threshold)     = nan;
+index_tip(apple_p<threshold) = nan; 
+M.slot  = findcolum(Txt_apple,'Top_x','Bottom_x');
+Edge(:,1)  = mean(raw_apple(:,M.slot(1)));
+Edge(:,2)  = mean(raw_apple(:,M.slot(2)));
+Edge       = mean(Edge);
 
+% pole
+M.pole   = findcolum(Txt_apple,'pole_x','pole_y','pole_p');
+pole_x   = raw_apple(:,M.pole(1));
 % nframe   = 1:size(raw_apple,1);
-nframe = 30*60;
+nframe = length(apple);
+%60*4*60;
 index_tip = index_tip(1:nframe);
 apple     = apple(1:nframe);
 nframes   = 1: nframe;
@@ -40,6 +52,8 @@ plot(index_tip,nframes,apple,nframes)
 hold on
 stem(Edge,nframe)
 plot(apple,nframes,'color','red');
+hold on 
+plot(pole_x,nframes,'color','blue')
 touch    = 0;time_fwd=[]; time_back=[];
 trial_count = 0;
 time_fwd=[]; time_back=[];
@@ -47,26 +61,28 @@ p=0;q=0;
 
 for i = 9:nframes(end)-1
     if index_tip(i,1) <= Edge && index_tip(i+1,1) >= Edge&&index_tip(i+5,1)>Edge
+        if apple(i)>Edge&&apple(i)<250  % 20 pixles
         time_fwd =[time_fwd,i];
         trial_count = trial_count+1;
         hold on
         p=p+1;
         text(Edge,i,[num2str(p),'\rightarrow'],'Color','red','FontSize',15)
         j=i;
-        while 1   
+            while 1   
             j=j+1
-            if j>=nframe(end)
+                if j>=nframe(end)
                 break
-            end
-            if index_tip(j,1) >= Edge && index_tip(j+1,1) <= Edge
-               time_back = [time_back,j];
+                end
+                if index_tip(j,1) >= Edge && index_tip(j+1,1) <= Edge
+                    time_back = [time_back,j];
 %                 if j ==time_back(q)
 %                    j=nan;
 %                 end
                 q=q+1;
                 text(Edge,j,[num2str(q),'\leftarrow'],'Color','green','FontSize',15)
                 break
-            end   
+                end   
+            end
         end
     end
     
