@@ -18,7 +18,7 @@ M.tip2     = findcolum(Txt_hand,'tip2_x','tip2_y','tip2_p'); % indexfinger tip
 index_tip  = raw_hand(:,M.tip2(1));
 index_tip_p = raw_hand(:,M.tip2(3));
 threshold = 0.3;
-% index_tip(index_tip_p<0.1)=nan;
+index_tip(index_tip_p<0.1)=nan;
 nframe    = length(index_tip);
 nframes   = 1: nframe;
 index_tip = movmean(index_tip,9);
@@ -85,7 +85,7 @@ p=0;q=0;
 
 for i = 9:nframes(end)-1
     if index_tip(i-2,1) < Edge &&index_tip(i-1,1) < Edge && index_tip(i,1) >= Edge&&index_tip(i+1,1)>Edge&&index_tip(i+2,1)>Edge
-        if apple(i)>Edge&&apple(i)<230  % 20 pixles
+%         if apple(i)>Edge&&apple(i)<230  % 20 pixles
         time_fwd =[time_fwd,i];
         trial_count = trial_count+1;
         hold on
@@ -94,10 +94,10 @@ for i = 9:nframes(end)-1
         j=i;
             while 1   
             j=j+1
-                if j>=nframe(end)||j>=i+3*60;
+                if j>=nframe(end)||j>=i+5*60;
                    break
                 end
-                if index_tip(j-2,1) > Edge&&index_tip(j-1,1) > Edge && index_tip(j,1) <= Edge&&index_tip(j+1,1)< Edge&&index_tip(j+2,1)<Edge
+                if index_tip(j-1,1) >= Edge && index_tip(j,1) <= Edge&&index_tip(j+1,1)< Edge&&index_tip(j+2,1)<Edge
                     time_back = [time_back,j];
 %                 if j ==time_back(q)
 %                    j=nan;
@@ -107,7 +107,7 @@ for i = 9:nframes(end)-1
                     break
                 end   
             end
-        end
+%         end
     end
     
 %     if TIP2(i,1) >= Edge && TIP2(i+1,1) <= Edge%&&TIP2(i+10,1)<Edge% && sum(isnan(apple_start(i-8:i))) > 0
