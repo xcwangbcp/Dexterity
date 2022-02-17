@@ -6,52 +6,70 @@ clear
 filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 [raw_apple,Txt_apple,~]      = xlsread([pathname,filename_raw_apple]);
 % filename_raw_hand  =  'D:\Code\Data\Apple\2-trimmed.csv';
-% filename_raw_apple = 'D:\Code\Data\Apple\2-trimmed-apple.csv';
-% Acrylic_Edge        = 'D:\Code\Dexterity\137LS_trimmed_cam1.csv';
-% raw_hand  = table2array(readtable([pathname,filename_raw_hand]));
 % raw_apple = table2array(readtable(filename_raw_apple));
-M.slot     = findcolum(Txt_apple,'Top_x','Bottom_x');
+M.slot     = findcolum(Txt_apple,'SlotTop_x','SlotBottom_x');
 Edge(:,1)  = mean(raw_apple(:,M.slot(1)));
 Edge(:,2)  = mean(raw_apple(:,M.slot(2)));
 Edge       = mean(Edge);
 M.tip2     = findcolum(Txt_hand,'tip2_x','tip2_y','tip2_p'); % indexfinger tip 
 index_tip  = raw_hand(:,M.tip2(1));
-index_tip_p = raw_hand(:,M.tip2(3));
-threshold = 0.3;
+index_tip_p= raw_hand(:,M.tip2(3));
+threshold  = 0.5;
 % index_tip(index_tip_p<0.1)=nan;
 nframe    = length(index_tip);
 nframes   = 1: nframe;
-index_tip = movmean(index_tip,9);
-plot(index_tip,nframes,'color','red')
+index_tip = movmean(index_tip,5);
+% plot(index_tip,nframes,'color','red')
 
 
 M.apple   = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
 apple     = raw_apple(:,M.apple(1));
-% apple    = movmean(apple,9);
+apple     = movmean(apple,5);% average in a second
 apple_p   = raw_apple(:,M.apple(3));
-
+% deletet the data by 3 criterier 
 apple(apple_p<threshold)     = nan;
-apple(apple<210)             = nan;
-
-hold on
-plot(apple,nframes,'color','g')
-hold on
+apple(apple<Edge )           = nan;
+% arti_locs   = find(abs(diff_apple)>15);
+% apple(arti_locs+1)=nan;
+% delet the part which apple is taken back by the pole by human 
+diff_apple  = diff(apple);
+diff_apple  = [nan;diff_apple];
+sign_diff   = sign(diff_apple);
+sign_diff   = [nan;sign_diff];
+sign_diff(isnan(sign_diff))=0;
+sumwindow_sign = movsum(sign_diff,6,'omitnan');
+locs_sign   = find(sumwindow_sign>=4);
+for i=1:length(locs_sign)
+    if apple(locs_sign(i))>240
+       apple(locs_sign(i)-2:locs_sign(i)+2)=nan;
+    end
+end
+plot(apple,nframes,'color','c')
 apple_num = 0; 
 
 x = apple(~isnan(apple));
 p = ~isnan(apple); 
-y = abs(diff(x));
-y =[0;y];
+y = diff(x);
+y =[nan;y];
 z = NaN(1,nframe);
 z(p)=y;
 point = find(z>30);
+diff_point = diff(point);
+% diff_point = [nan;diff_point];
+locs       = find(diff_point<10);%0.5s
+point(locs)= nan;
+point=point(~isnan(point));
+hold on
+plot(apple(point),point,'marker','*','color','blue')
 
 
-for i= 2:length(apple)
-    if isnan(apple(i))
-        apple(i)=apple(i-1);
-    end
-end
+% for i= 5:length(apple)
+%     if apple(i)>apple(i-1)&&apple(i+1)>apple(i)
+%         
+%     end
+% end
+hold on
+
 distance  = abs(diff(apple));
 apple_out(:,1) = apple(distance>30);
 apple_out(:,2) = find(distance>30)+2;
@@ -64,14 +82,18 @@ end
 plot(apple_out(:,1),apple_out(:,2),'marker','*','color','blue')
 
 % pole
-M.pole   = findcolum(Txt_apple,'pole_x','pole_y','pole_p');
+M.pole   = findcolum(Txt_apple,'Pole_x','Pole_y','Pole_p');
 pole_x   = raw_apple(:,M.pole(1));
+pole_p   = raw_apple(:,M.pole(3));
 % nframe   = 1:size(raw_apple,1);
 % nframe = 60*60;
 index_tip = index_tip(1:nframe);
 apple     = apple(1:nframe);
 pole_x    = pole_x(1:nframe);
-
+pole_x(pole_x<mode(pole_x) )     = nan;
+pole_x(apple_p<threshold)= nan;
+hold on
+plot(pole_x,nframes,'c*')
 
 hold on
 stem(Edge,nframe)
