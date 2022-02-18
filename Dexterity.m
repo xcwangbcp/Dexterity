@@ -14,11 +14,11 @@ Edge       = mean(Edge);
 M.tip2     = findcolum(Txt_hand,'tip2_x','tip2_y','tip2_p'); % indexfinger tip 
 index_tip  = raw_hand(:,M.tip2(1));
 index_tip_p= raw_hand(:,M.tip2(3));
-threshold  = 0.5;
-% index_tip(index_tip_p<0.1)=nan;
+threshold  = 0.2;
+index_tip(index_tip_p<threshold)=nan;
 nframe    = length(index_tip);
 nframes   = 1: nframe;
-index_tip = movmean(index_tip,5);
+index_tip = movmean(index_tip,3);
 % plot(index_tip,nframes,'color','red')
 
 
@@ -53,57 +53,51 @@ y = diff(x);
 y =[nan;y];
 z = NaN(1,nframe);
 z(p)=y;
-point = find(z>30);
+point = find(z>30); % 两帧之间的距离大于10个像素
 diff_point = diff(point);
 % diff_point = [nan;diff_point];
-locs       = find(diff_point<10);%0.5s
+locs       = find(diff_point<10);%0.5s加一个约束条件，相邻的位置需要大于10帧
 point(locs)= nan;
+point=point(~isnan(point));
+for i=1:length(point)
+    if apple(point(i))<240
+        point(i)=nan;
+    end 
+end
 point=point(~isnan(point));
 hold on
 plot(apple(point),point,'marker','*','color','blue')
-
-
-% for i= 5:length(apple)
-%     if apple(i)>apple(i-1)&&apple(i+1)>apple(i)
-%         
-%     end
-% end
-hold on
-
-distance  = abs(diff(apple));
-apple_out(:,1) = apple(distance>30);
-apple_out(:,2) = find(distance>30)+2;
-% apple_out(:,1) = apple(apple_out(:,2));
-for i=1:length(apple_out(:,1))
-    if apple_out(i,1)>250
-        apple_out(i,1)=NaN;
-    end
-end
-plot(apple_out(:,1),apple_out(:,2),'marker','*','color','blue')
-
-% pole
-M.pole   = findcolum(Txt_apple,'Pole_x','Pole_y','Pole_p');
-pole_x   = raw_apple(:,M.pole(1));
-pole_p   = raw_apple(:,M.pole(3));
-% nframe   = 1:size(raw_apple,1);
-% nframe = 60*60;
-index_tip = index_tip(1:nframe);
-apple     = apple(1:nframe);
-pole_x    = pole_x(1:nframe);
-pole_x(pole_x<mode(pole_x) )     = nan;
-pole_x(apple_p<threshold)= nan;
-hold on
-plot(pole_x,nframes,'c*')
-
 hold on
 stem(Edge,nframe)
 
- 
-% plot(pole_x,nframes,'color','blue')
-touch    = 0; 
-trial_count = 0;
-time_fwd=[]; time_back=[];
-p=0;q=0;
+fwd_count = 0; want_count = 0; success_count = 0;
+fwd_time  =[]; back_time  = [];
+for i=1:length(point)-1
+    time_window = [point(i),point(i+1)];
+    hold on
+    plot(index_tip(point(i):point(i+1)),point(i):point(i+1),'r')
+    for j=point(i):point(i+1)                             % 从第i个苹果出来，到第i+1个苹果出来前的5帧内
+       
+         if index_tip(j,1)<= Edge && index_tip(j+1,1)>=Edge && sum(isnan(apple(j-8:j))) < 4  % 如果食指在该时间窗内伸入挡板，计为一次伸手
+            fwd_count = fwd_count+1;
+            fwd_time  = [fwd_time,j];                        %并且伸手的时候苹果在，即为想去拿苹果
+%             if sum(isnan(apple(j-8:j)))>0
+%                 want_count = want_count+1;
+                k = j;                                        %进挡板后至少5帧，去判断出手的时间
+                while 1
+                    if index_tip(k,1)>=Edge&&index_tip(k+1,1)<=Edge&&sum(isnan(apple(k-8:k)))>0
+                        success_count = success_count+1;
+                        back_time     = [back_time,k];
+                    end
+                        k=k+1;
+                    if  k>j+60
+                        break
+                    end
+                end
+%             end
+         end
+    end
+end
 
 for i = 9:nframes(end)-1
     if index_tip(i-2,1) < Edge &&index_tip(i-1,1) < Edge && index_tip(i,1) >= Edge&&index_tip(i+1,1)>Edge&&index_tip(i+2,1)>Edge
@@ -136,6 +130,57 @@ for i = 9:nframes(end)-1
 %         time_back = [time_back,i];
 %     end     
 end
+
+
+
+
+
+
+
+
+
+% for i= 5:length(apple)
+%     if apple(i)>apple(i-1)&&apple(i+1)>apple(i)
+%         
+%     end
+% end
+hold on
+
+% distance  = abs(diff(apple));
+% apple_out(:,1) = apple(distance>30);
+% apple_out(:,2) = find(distance>30)+2;
+% % apple_out(:,1) = apple(apple_out(:,2));
+% for i=1:length(apple_out(:,1))
+%     if apple_out(i,1)>250
+%         apple_out(i,1)=NaN;
+%     end
+% end
+% plot(apple_out(:,1),apple_out(:,2),'marker','*','color','blue')
+
+% pole
+M.pole   = findcolum(Txt_apple,'Pole_x','Pole_y','Pole_p');
+pole_x   = raw_apple(:,M.pole(1));
+pole_p   = raw_apple(:,M.pole(3));
+% nframe   = 1:size(raw_apple,1);
+% nframe = 60*60;
+index_tip = index_tip(1:nframe);
+apple     = apple(1:nframe);
+pole_x    = pole_x(1:nframe);
+pole_x(pole_x<mode(pole_x) )     = nan;
+pole_x(apple_p<threshold)= nan;
+hold on
+plot(pole_x,nframes,'c*')
+
+
+
+ 
+% plot(pole_x,nframes,'color','blue')
+touch    = 0; 
+trial_count = 0;
+
+p=0;q=0;
+
+
 t=(time_back-time_fwd);
 
 [location] = inthepicture(raw,M);
