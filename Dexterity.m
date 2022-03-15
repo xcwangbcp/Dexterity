@@ -14,8 +14,8 @@ Edge       = mean(Edge);
 M.tip2     = findcolum(Txt_hand,'tip2_x','tip2_y','tip2_p'); % indexfinger tip 
 index_tip  = raw_hand(:,M.tip2(1));
 index_tip_p= raw_hand(:,M.tip2(3));
-threshold  = 0.2;
-index_tip(index_tip_p<threshold)=nan;
+threshold_hand  = 0.001;
+index_tip(index_tip_p<threshold_hand)=nan;
 nframe    = length(index_tip);
 nframes   = 1: nframe;
 index_tip = movmean(index_tip,3);
@@ -27,20 +27,23 @@ apple     = raw_apple(:,M.apple(1));
 apple     = movmean(apple,5);% average in a second
 apple_p   = raw_apple(:,M.apple(3));
 % deletet the data by 3 criterier 
-apple(apple_p<threshold)     = nan;
-apple(apple<Edge )           = nan;
+threshold_apple = 0.2;
+apple(apple_p<threshold_apple) = nan;
+apple(apple<Edge )             = nan;
 % arti_locs   = find(abs(diff_apple)>15);
 % apple(arti_locs+1)=nan;
 % delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple);
 diff_apple  = [nan;diff_apple];
-sign_diff   = sign(diff_apple);
+sign_diff   = sign(diff_apple);% whether more or less than 0
 sign_diff   = [nan;sign_diff];
-sign_diff(isnan(sign_diff))=0;
-sumwindow_sign = movsum(sign_diff,6,'omitnan');
-locs_sign   = find(sumwindow_sign>=4);
+sign_diff(isnan(sign_diff))=0;% change into 0 or +-1
+sumwindow_sign   = movsum(sign_diff,6,'omitnan');
+locs_sign        = find(sumwindow_sign>=4);
+[counts,centers] = hist(apple,20);
+mostposition = centers(counts==max(counts));
 for i=1:length(locs_sign)
-    if apple(locs_sign(i))>240
+    if apple(locs_sign(i))>mostposition+5
        apple(locs_sign(i)-2:locs_sign(i)+2)=nan;
     end
 end
@@ -51,53 +54,87 @@ x = apple(~isnan(apple));
 p = ~isnan(apple); 
 y = diff(x);
 y =[nan;y];
+% point_end = find(y>30)-10;
+% if point_end(1)<=0
+%     point_end(1) = 1;
+% end
+% m=0;
+% while 1
+%     m = m+1;
+%     if isnan(y(point_end(m)))
+%         y(point_end(m))=y(point_end(m+1));
+%     else
+%         break
+%     end
+% end
+
 z = NaN(1,nframe);
+% point_end=find(abs(z-y(point_end))<10^-4);
 z(p)=y;
-point = find(z>30); % 两帧之间的距离大于10个像素
-diff_point = diff(point);
-% diff_point = [nan;diff_point];
-locs       = find(diff_point<10);%0.5s加一个约束条件，相邻的位置需要大于10帧
-point(locs)= nan;
-point=point(~isnan(point));
-for i=1:length(point)
-    if apple(point(i))<240
-        point(i)=nan;
+point_start = find(z>30); % 两帧之间的距离大于30个像素
+diff_point_start = diff(point_start);
+% diff_point_start = [nan;diff_point_start];
+locs       = find(diff_point_start<10);%0.5s加一个约束条件，相邻的位置需要大于10帧
+point_start(locs)= nan;
+point_start=point_start(~isnan(point_start));
+for i=1:length(point_start)
+    if apple(point_start(i))<240
+        point_start(i)=nan;
     end 
 end
-point=point(~isnan(point));
+point_start=point_start(~isnan(point_start));
 hold on
-plot(apple(point),point,'marker','*','color','blue')
-hold on
-stem(Edge,nframe)
+plot(apple(point_start),point_start,'marker','*','color','blue')
+
 
 fwd_count = 0; want_count = 0; success_count = 0;
 fwd_time  =[]; back_time  = [];
-for i=1:length(point)-1
-    time_window = [point(i),point(i+1)];
+apple_num=length(point_start);
+for i=1:apple_num
+    if i<apple_num
+        time_window = [point_start(i):point_start(i+1)];
+    else 
+        time_window = [point_start(i):length(apple)];% the last apple show up and wait for 20 seconds
+    end
+    apple_window     = apple(time_window);
+    index_tip_window = index_tip(time_window);
+    figure 
+    plot(index_tip_window ,time_window,'r')
+    hold on 
+    plot(apple_window,time_window,'b-')
     hold on
-    plot(index_tip(point(i):point(i+1)),point(i):point(i+1),'r')
-    for j=point(i):point(i+1)                             % 从第i个苹果出来，到第i+1个苹果出来前的5帧内
-       
-         if index_tip(j,1)<= Edge && index_tip(j+1,1)>=Edge && sum(isnan(apple(j-8:j))) < 4  % 如果食指在该时间窗内伸入挡板，计为一次伸手
+    stem(Edge,nframe)
+    apple_disappear         = find(isnan(apple_window),1,'first');% 判断这期间苹果在不在，不在的时间
+    apple_disappear_time(i) = time_window(1)+ apple_disappear-1;
+
+    for j=time_window(1):apple_disappear_time(i)                 % 从第i个苹果出来，到第i个苹果消失的time window
+        
+         if index_tip(j-2,1)<index_tip(j-1,1)&&index_tip(j-1,1)<index_tip(j,1)&&index_tip(j,1)<= Edge && index_tip(j+1,1)>=Edge...
+                 &&index_tip(j+2,1)>index_tip(j+1,1)&&~isnan(apple(j))  % 如果食指在该时间窗内伸入挡板，计为一次伸手,并且苹果在
             fwd_count = fwd_count+1;
             fwd_time  = [fwd_time,j];                        %并且伸手的时候苹果在，即为想去拿苹果
 %             if sum(isnan(apple(j-8:j)))>0
 %                 want_count = want_count+1;
                 k = j;                                        %进挡板后至少5帧，去判断出手的时间
                 while 1
-                    if index_tip(k,1)>=Edge&&index_tip(k+1,1)<=Edge&&sum(isnan(apple(k-8:k)))>0
-                        success_count = success_count+1;
+                    if index_tip(k+1,1)<index_tip(k,1)&&index_tip(k,1)<=Edge...
+                       &&index_tip(k-1,1)>=Edge%&&index_tip(k-1,1)<index_tip(k-2,1) index_tip(k+2,1)<index_tip(k+1,1)&&
+                        success_count = success_count+1;% 如果条件设成5点的，会损失某些点
                         back_time     = [back_time,k];
-                    end
-                        k=k+1;
-                    if  k>j+60
                         break
                     end
+                        k=k+1;
+%                     if  k>j+60
+%                         break
+%                     end
                 end
 %             end
          end
     end
 end
+grab_time = back_time-fwd_time;
+locs      = grab_time>12;% 132-5-31 低于12帧的是没有获取到苹果的数据，其他猴子待验证
+grab_time = grab_time(locs)/60;
 
 for i = 9:nframes(end)-1
     if index_tip(i-2,1) < Edge &&index_tip(i-1,1) < Edge && index_tip(i,1) >= Edge&&index_tip(i+1,1)>Edge&&index_tip(i+2,1)>Edge
