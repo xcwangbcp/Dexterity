@@ -163,7 +163,7 @@ for  i=1:length(back_time)
     end 
 end 
 back_time(locs)=nan;fwd_time(locs)=nan;
-grab_time = [back_time(~isnan(back_time)); fwd_time(~isnan(fwd_time))]';
+grab_time = [ fwd_time(~isnan(fwd_time));back_time(~isnan(back_time))]';
 locs      = grab_time>12;% 132-5-31 低于12帧的是没有获取到苹果的数据，其他猴子待验??
 grab_time = grab_time(locs)/60;
 
