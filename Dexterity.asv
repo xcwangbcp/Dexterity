@@ -53,9 +53,8 @@ for i=1:length(locs_sign)-2
     end
 end
 plot(apple,nframes,'color','c')
+apple_num = 0; 
 
-% find out when and the coordintes of the apple, when the certain apple
-% coming out.
 locs_ss=[];
 for i=3:length(apple)-4
     if isnan(apple(i))&&isnan(apple(i-1))&&isnan(apple(i-2))
@@ -67,7 +66,7 @@ for i=3:length(apple)-4
     end
 end
 % the following used a more beutiful way to report when the apple start,but usually lost the 1st point.     
-% point_start = find(z>30);
+% point_start = find(z>30); % ????????????30??????
 % diff_point_start = diff(point_start);
 % % diff_point_start = [nan;diff_point_start];
 % locs       = find(diff_point_start<10);%0.5s??????????????????λ?????????10??
@@ -109,13 +108,11 @@ for i=1:apple_num
     apple_end                      = find(diff_apple(time_window)>-0.6,1,'first');
     apple_start_end_disappear(i,2) = time_window(1)+ apple_end-1;
     apple_disappear                = find(isnan(apple_window),1,'first');% 判断这期间苹果在不在，不在的时间
-    apple_start_end_disappear(i,3) = time_window(1)+ apple_disappear-2;
-    % if disappear location is 5 ps right of the stable apple,means
-    %the apple is taken back by experimenter,设定5,sometimes make mistake
+    apple_start_end_disappear(i,3) = time_window(1)+ apple_disappear-2;% if disappear location is 10 ps right of the 
     apple_start_end_disappear(i,4) = i;
     apple_start_end_disappear(i,5) = nograb_num;
     fprintf(fid,'%6d %6d %6d %6d %6d\n',apple_start_end_disappear(i,:));
-    if apple(apple_start_end_disappear(i,3))>mostposition+6          
+    if apple(apple_start_end_disappear(i,3))>mostposition+5           % stable apple,means, the apple is taken back by experimenter
          nograb_num=nograb_num+1;
          nograb_id =[nograb_id,i];
     else
@@ -142,9 +139,7 @@ for i=1:apple_num
                         k=k+1;
                 end
             end
-        end
-%         index_ROI = index_tip(fwd_time,back_time);
-        
+        end  
         if  grab_num<=1
             correct_trialID = [correct_trialID,i];
             correct_        = [fwd_time(end); back_time(end)];
