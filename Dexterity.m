@@ -182,19 +182,19 @@ for i=1:trials
     time_window      = id_action(i,2)-20:id_action(i,3)-2*60;
     apple_window     = apple(time_window);
     index_tip_window = index_tip(time_window);
+    index_tip_window(index_tip_window<Edge_x)=nan;
+    index_tip_window(index_tip_window>260)=nan;
+    apple_window     = apple_window(~isnan(index_tip_window));
+    index_tip_window = index_tip_window(~isnan(index_tip_window));
+    time_window      = time_window(~isnan(index_tip_window));
     figure    
     plot(index_tip_window ,time_window,'r')
     hold on 
     plot(apple_window,time_window,'b-')
     title(num2str(id_action(i,1)));
-    index_tip_window = index_tip_window>Edge_x;
+    
+    [tmax,vmax,tmin,vmin] = extrem_num(index_tip_window,time_window');
 end
-
-
-
-
-
-
 
 erro_rate    = erro_num/(apple_num-nograb_num);
 delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
@@ -206,6 +206,7 @@ plot(apple(apple_start_end_disappear(:,2)),apple_start_end_disappear(:,2),'go')
 hold on
 plot(apple(apple_start_end_disappear(:,3)-1),apple_start_end_disappear(:,3)-1,'b+')
 j=1;
+
 for  i=1:length(back_time)
     if index_tip_y(fwd_time(i))<130||index_tip_y(fwd_time(i))>200
         locs(j)=i;
@@ -216,7 +217,28 @@ end
 back_time(locs)=nan;fwd_time(locs)=nan;
 grab_time = [ fwd_time(~isnan(fwd_time));back_time(~isnan(back_time))]';
 
-
+function [tmax,vmax,tmin,vmin] = extrem_num(p,f);
+v = p;
+t = f;
+Lmax = diff(sign(diff(v)))== -2; % logic vector for the local max value
+Lmin = diff(sign(diff(v)))== 2; % logic vector for the local min value
+% match the logic vector to the original vecor to have the same length
+Lmax = [false; Lmax; false];
+Lmin =  [false; Lmin; false];
+tmax = t (Lmax); % locations of the local max elements
+tmin = t (Lmin); % locations of the local min elements
+vmax = v (Lmax); % values of the local max elements
+vmin = v (Lmin); % values of the local min elements
+ 
+% plot them on a figure
+figure
+plot(v,t);
+xlabel('t'); ylabel('v');
+hold on;
+plot(vmax, tmax, 'r+');
+plot(vmin,tmin, 'g+');
+hold off;
+end
 function [location_hand] = inthepicture(raw,M)  
     likelyhood = [raw(:,M.base(3)),raw(:,M.MCP1(3)),raw(:,M.PIP1(3)),raw(:,M.tip1(3))...
               raw(:,M.MCP2(3)),raw(:,M.PIP2(3)),raw(:,M.DIP2(3)),raw(:,M.tip2(3))];
