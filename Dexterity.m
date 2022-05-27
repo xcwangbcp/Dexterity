@@ -20,41 +20,41 @@ M.DIP2          = findcolum(Txt_hand,'DIP2_x','DIP2_y','DIP2_p');
 M.PIP2          = findcolum(Txt_hand,'PIP2_x','PIP2_y','PIP2_p');
 M.MCP2          = findcolum(Txt_hand,'MCP2_x','MCP2_y','MCP2_p');   
 
-[thumb_tip_x,thumb_tip_y] = readout(M.tip1,threshold_hand,raw_hand);
-[thumb_pip_x,thumb_pip_y] = readout(M.PIP1,threshold_hand,raw_hand);
-[thumb_mcp_x,thumb_mcp_y] = readout(M.MCP1,threshold_hand,raw_hand);
-[base_x,          base_y] = readout(M.Base,threshold_hand,raw_hand);
+[Hand.thumb_tip_x,Hand.thumb_tip_y] = readout(M.tip1,threshold_hand,raw_hand);
+[Hand.thumb_pip_x,Hand.thumb_pip_y] = readout(M.PIP1,threshold_hand,raw_hand);
+[Hand.thumb_mcp_x,Hand.thumb_mcp_y] = readout(M.MCP1,threshold_hand,raw_hand);
+[Hand.base_x,          Hand.base_y] = readout(M.Base,threshold_hand,raw_hand);
 
-[index_tip_x,index_tip_y] = readout(M.tip2,threshold_hand,raw_hand);
-[index_dip_x,index_dip_y] = readout(M.DIP2,threshold_hand,raw_hand);
-[index_pip_x,index_pip_y] = readout(M.PIP2,threshold_hand,raw_hand);
-[index_mcp_x,index_mcp_y] = readout(M.MCP2,threshold_hand,raw_hand);
+[Hand.index_tip_x,Hand.index_tip_y] = readout(M.tip2,threshold_hand,raw_hand);
+[Hand.index_dip_x,Hand.index_dip_y] = readout(M.DIP2,threshold_hand,raw_hand);
+[Hand.index_pip_x,Hand.index_pip_y] = readout(M.PIP2,threshold_hand,raw_hand);
+[Hand.index_mcp_x,Hand.index_mcp_y] = readout(M.MCP2,threshold_hand,raw_hand);
 
 
-M.slot     = findcolum(Txt_apple,'SlotTop_x','SlotBottom_x','SlotTop_y','SlotBottom_y');
-Edge_x     = (mean(raw_apple(:,M.slot(1)))+mean(raw_apple(:,M.slot(2))))/2;
-Edge_y_top = mean(raw_apple(:,M.slot(3)));
-Edge_y_bot = mean(raw_apple(:,M.slot(4)));
+M.slot      = findcolum(Txt_apple,'SlotTop_x','SlotBottom_x','SlotTop_y','SlotBottom_y');
+Hand.edge_x = (mean(raw_apple(:,M.slot(1)))+mean(raw_apple(:,M.slot(2))))/2;
+Edge_y_top  = mean(raw_apple(:,M.slot(3)));
+Edge_y_bot  = mean(raw_apple(:,M.slot(4)));
 
-M.apple         = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
-[apple,apple_y] = readout(M.apple,threshold_apple,raw_apple);
+M.apple           = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
+[apple_x,apple_y] = readout(M.apple,threshold_apple,raw_apple);
 
 % M.pole    = findcolum(Txt_apple,'Pole_x','Plole_y');
 % pole_y    = raw_apple(:,M.pole(2));
 % deletet the data by 3 criterier 
-apple(apple<Edge_x )             = nan;
-apple(apple>340)                 = nan; % 350 is the board of the glass
+apple_x(apple_x<Hand.edge_x )             = nan;
+apple_x(apple_x>340)                 = nan; % 350 is the board of the glass
 % Step 2:delet the part which apple is taken back by the pole by human 
-diff_apple  = diff(apple);
+diff_apple  = diff(apple_x);
 diff_apple  = [nan;diff_apple];
 sign_diff   = sign(diff_apple);% whether more or less than 0
 sign_diff   = [nan;sign_diff];
 sign_diff(isnan(sign_diff))=0;% change into 0 or +-1
 sumwindow_sign   = movsum(sign_diff,6,'omitnan');
 locs_sign        = find(sumwindow_sign>=4);
-[counts,centers] = hist(apple,20);
+[counts,centers] = hist(apple_x,20);
 mostposition     = centers(counts==max(counts));
-nframe           = length(index_tip_x);
+nframe           = length(Hand.index_tip_x);
 nframes          = 1: nframe;
 % delet the apple was taken back by human only the apple‘s coordinates
 % right than mostposition+20
@@ -63,16 +63,16 @@ nframes          = 1: nframe;
 %        apple(locs_sign(i)-2:locs_sign(i)+2)=nan;
 %     end 
 % end
-plot(apple,nframes,'color','c')
+plot(apple_x,nframes,'color','c')
 
 %Step4: when the certain applecoming out,
 %  find out when and the coordintes of the apple,
 apple_start=[];% apple start means from the 1st appearance in the slit
-for appleLength=3:length(apple)-4
+for appleLength=3:length(apple_x)-4
     
-    if isnan(apple(appleLength))&&isnan(apple(appleLength-1))&&isnan(apple(appleLength-2))
-        if apple(appleLength+1)>apple(appleLength+2)&&apple(appleLength+2)>apple(appleLength+3)%&&apple(i+3)>apple(i+4)
-            if apple(appleLength+1)>260
+    if isnan(apple_x(appleLength))&&isnan(apple_x(appleLength-1))&&isnan(apple_x(appleLength-2))
+        if apple_x(appleLength+1)>apple_x(appleLength+2)&&apple_x(appleLength+2)>apple_x(appleLength+3)%&&apple(i+3)>apple(i+4)
+            if apple_x(appleLength+1)>260
                 if apple_y(appleLength+1)>195&&apple_y(appleLength+1)<210 % in certain times, there are two apples were captured...
                     apple_start=[apple_start,appleLength+1];    %e.g. 76-7-7
                 end
@@ -93,7 +93,7 @@ end
 %     end      
 % end
 hold on 
-plot(apple(apple_start),apple_start,'ro');
+plot(apple_x(apple_start),apple_start,'ro');
 hold off
 nograb_num = 0;nograb_id = [];grab_status =[];
 grab_id    =[];
@@ -109,11 +109,11 @@ for j=1:apple_num
     if j<apple_num
         time_window = [apple_start(j):apple_start(j+1)];
     else 
-        time_window = [apple_start(j):length(apple)];% the last apple show up and wait for 20 seconds
+        time_window = [apple_start(j):length(apple_x)];% the last apple show up and wait for 20 seconds
     end
-    apple_window     = apple(time_window);
-    index_tip_x_window = index_tip_x(time_window);
-    index_tip_y_window = index_tip_y(time_window);
+    apple_window     = apple_x(time_window);
+    index_tip_x_window = Hand.index_tip_x(time_window);
+    index_tip_y_window = Hand.index_tip_y(time_window);
 %     figure    
 %     plot(index_tip_x_window ,time_window,'r')
 %     hold on 
@@ -125,10 +125,10 @@ for j=1:apple_num
     apple_start_end_disappear(j,3) = time_window(1)+ apple_end-1; % apple stop time
     apple_disappear                = find(isnan(apple_window),1,'first');% 判断这期间苹果在不在，不在的时间
     apple_start_end_disappear(j,4) = time_window(1)+ apple_disappear-2; % apple disappear time
-    apple_start_end_disappear(j,6) = apple(apple_start_end_disappear(j,3));% 
+    apple_start_end_disappear(j,6) = apple_x(apple_start_end_disappear(j,3));% 
     % if disappear location is 5 ps right of the stable apple,means
     %the apple is taken back by experimenter,设定5,sometimes make mistakes
-    if apple(apple_start_end_disappear(j,4))>mostposition+6          
+    if apple_x(apple_start_end_disappear(j,4))>mostposition+6          
          nograb_num          = nograb_num+1;
          nograb_id           = [nograb_id;j];
          id_action(j,:)      = [j,0,0,apple_start_end_disappear(j,4)];
@@ -149,18 +149,16 @@ correct_trial = [];correct_trialID = [];
 erroI_num   = 0;
 trials = length(grab_id);
 for i= 1:trials
-    fwd_count =0;
+    fwd_count =0; % 从第i个苹果出来，到第i个苹果消失的time window
         for j=id_action(i,2)-20:id_action(i,3)% apple_disappear_time(i)  
-            % 从第i个苹果出来，到第i个苹果消失的time window
-            if index_tip_x(j-1,1)<index_tip_x(j,1)&&index_tip_x(j,1)<= Edge_x && index_tip_x(j+1,1)>=Edge_x...
-                 &&~isnan(apple(j))  %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)
-             % 如果食指在该时间窗内伸入挡板，计为一次伸??,并且苹果??
-                fwd_count = fwd_count+1;
+            if Hand.index_tip_x(j-1,1)<Hand.index_tip_x(j,1)&&Hand.index_tip_x(j,1)<= Hand.edge_x && Hand.index_tip_x(j+1,1)>=Hand.edge_x...
+                 &&~isnan(apple_x(j))                         %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)
+                fwd_count = fwd_count+1;                    % 如果食指在该时间窗内伸入挡板，计为一次伸??,并且苹果??
                 fwd_time  = [fwd_time,j];                   % 并且伸手的时候苹果在，即为想去拿苹果            
                 k = j;                                      %进挡板后至少5帧，去判断出手的时间
-                while 1                                      % 如果条件设成5点的，会损失某些??
-                    if index_tip_x(k+1,1)<index_tip_x(k,1)&&index_tip_x(k,1)<=Edge_x...
-                       &&index_tip_x(k-1,1)>=Edge_x       %&&index_tip_x(k-1,1)<index_tip_x(k-2,1) index_tip_x(k+2,1)<index_tip_x(k+1,1)&&
+                while 1                                     % 如果条件设成5点的，会损失某些??
+                    if Hand.index_tip_x(k+1,1)<Hand.index_tip_x(k,1)&&Hand.index_tip_x(k,1)<=Hand.edge_x...
+                       &&Hand.index_tip_x(k-1,1)>=Hand.edge_x    %&&index_tip_x(k-1,1)<index_tip_x(k-2,1) index_tip_x(k+2,1)<index_tip_x(k+1,1)&&
                         back_time     = [back_time,k];
                         j=k+1;
                         fprintf(fid,'%6d %6d %6d %6d \n',j,fwd_count,fwd_time(end),back_time(end));
@@ -169,13 +167,13 @@ for i= 1:trials
                         k=k+1;
                 end
             end
-        end
+         end
         if  fwd_count==1
             correct_trialID = [correct_trialID,id_action(i,1)];
             correct_        = [fwd_time(end); back_time(end)];
 %             correct_trial = [correct_trial',correct_]';
             id_action(i,6:7)=  correct_;
-            index_Y         = index_tip_y(fwd_time(end):back_time(end));
+            index_Y         = Hand.index_tip_y(fwd_time(end):back_time(end));
             [~,touch_time ] = max(index_Y );
             id_action(i,8)  = touch_time+fwd_time(end);
         else
@@ -189,36 +187,39 @@ end
 fclose(fid);
 
 % Step9,find out the 3rd type of error,which is hit the slit
-errorSlitHit_num =0; errorSlitHit_trialID=[];
-trials      = length(id_action(:,1));
-for i=1:trials
-    time_window  = id_action(i,6)-10:id_action(i,6)+10;
-    v_index_x    = [false;diff(index_tip_x(time_window))];
-%     figure
-%     subplot(211)
-%     plot(index_tip_x(time_window),time_window,'r-*')
-%     hold on 
-%     plot([Edge_x,Edge_x],[time_window(1),time_window(end)],'g-')
-%     plot([min(index_tip_x(time_window)),max(index_tip_x(time_window))],[id_action(i,6),id_action(i,6)],'g-')
-%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index'])
-%     hold off
-%     subplot(212)
-%     plot(v_index_x,time_window,'r-*')
-%     hold on 
-%     plot([min(v_index_x),max(v_index_x)],[id_action(i,6),id_action(i,6)],'g-')
-%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
-%     hold off
-    if mean(v_index_x(9:11))<5 % 
-        errorSlitHit_num     = errorSlitHit_num+1;
-        errorSlitHit_trialID = [errorSlitHit_trialID,id_action(i,1)];
-    end
-end
+[errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand.index_tip_x);
+[erroWander_num ,erroWander_trialID]    = wanderError(id_action,Hand,apple_x,filename_raw_hand);
+[erroGrisp_num,erroGrisp_trialID]       = precisGrispError(id_action,Hand,apple_x,apple_y);
 [id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
+
+
+erro_num     = erroWander_num+erroI_num+errorSlitHit_num;
+erro_rate    = erro_num/(apple_num-nograb_num);
+delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
 % precision grisp error
-erroGrisp_num     = 0; 
-erroGrisp_trialID = [];
-trials            = length(id_action(:,1));
-for i=1:trials
+% Step 9  find out the 4th type error, which is determined by the distance
+% between the apple and the joints of index and thumb
+function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,apple,apple_y)
+ erroGrisp_num     = 0; 
+ erroGrisp_trialID = [];
+ trials            = length(id_action(:,1));
+ index_tip_x       = Hand.index_tip_x;
+ index_tip_y       = Hand.index_tip_y;
+ index_dip_x       = Hand.index_dip_x;
+ index_dip_y       = Hand.index_dip_y;
+ index_pip_x       = Hand.index_pip_x;
+ index_pip_y       = Hand.index_pip_y;
+ index_mcp_x       = Hand.index_mcp_x;
+ index_mcp_y       = Hand.index_mcp_y;
+ thumb_tip_x       = Hand.thumb_tip_x;
+ thumb_tip_y       = Hand.thumb_tip_y;
+ thumb_pip_x       = Hand.thumb_pip_x;
+ thumb_pip_y       = Hand.thumb_pip_y;
+ thumb_mcp_x       = Hand.thumb_mcp_x;
+ thumb_mcp_y       = Hand.thumb_mcp_y;
+ base_x            = Hand.base_x;
+ base_y            = Hand.base_y;
+ for i=1:trials
     time_window      = id_action(i,6):id_action(i,7);
     indexTip_window  = [index_tip_x(time_window),index_tip_y(time_window)];
     indexDip_window  = [index_dip_x(time_window),index_dip_y(time_window)];
@@ -248,13 +249,7 @@ for i=1:trials
         aa = norm(base_window(j,:)-thumbMcp_window(j,:));
         bb = norm(thumbMcp_window(j,:)-indexMcp_window(j,:));
         cc = norm(base_window(j,:)-indexMcp_window(j,:));
-        theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);
-%         theta(j) = acosd(norm(base_window(j,:)-indexMcp_window(j,:))^2+...
-%                          norm(base_window(j,:)-thumbMcp_window(j,:))^2-....
-%                          norm(thumbMcp_window(j,:)-indexMcp_window(j,:))^2/...
-%                          (2*norm(base_window(j,:)-indexMcp_window(j,:))*...
-%                          norm(base_window(j,:)-thumbMcp_window(j,:))));
-%                      
+        theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);                   
     end
     figure
     subplot(211)
@@ -267,20 +262,29 @@ for i=1:trials
         erroGrisp_num     = erroGrisp_num+1;
         erroGrisp_trialID = [erroGrisp_trialID,id_action(j,1)];
     end
+ end
 end
-[id_action]=delete_errotrials(id_action,erroGrisp_trialID);
+
 
 
 % Step 7:find out the error typeII,which is to pick out the wandering trials in the left
 % If both fingers touched the food but the monkey released it and tried to pick it up again,
 % we judged it as a ‘wandering error’(nature 2012)
-erroII_num =0; erroII_trialID=[];
-trials      = length(id_action(:,1));
-index_tip_x(index_tip_x<Edge_x)=nan;
-index_tip_x(index_tip_x>340)   =nan;
-index_tip_y(isnan(index_tip_x))=nan;
-index_tip   = [index_tip_x,406-index_tip_y];
-thumb_tip   = [thumb_tip_x,406-thumb_tip_y];
+function [erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand,apple,filename_raw_hand)
+erroWander_num     = 0; 
+erroWander_trialID = [];
+trials             = length(id_action(:,1));
+
+index_tip_x        = Hand.index_tip_x;
+index_tip_y        = Hand.index_tip_y;
+thumb_tip_x        = Hand.thumb_tip_x;
+thumb_tip_y        = Hand.thumb_tip_y;
+Edge_x             = Hand.edge_x;
+index_tip_x(index_tip_x<Edge_x) = nan;
+index_tip_x(index_tip_x>340)    = nan;
+index_tip_y(isnan(index_tip_x)) = nan;
+index_tip                       = [index_tip_x,406-index_tip_y];
+thumb_tip                       = [thumb_tip_x,406-thumb_tip_y];
 
 for j=1:trials
     time_window  = id_action(j,6):id_action(j,7);% which is the in+out of the slit
@@ -325,8 +329,8 @@ for j=1:trials
           end 
       end
       if N>=2
-         erroII_num     = erroII_num+1;
-         erroII_trialID = [erroII_trialID,id_action(j,1)];
+         erroWander_num     = erroWander_num+1;
+         erroWander_trialID = [erroWander_trialID,id_action(j,1)];
       end
 %       if vmax(1)-vmin(1)>10||vmax(2)-vmin(2)>10
 %          erroII_num     = erroII_num+1;
@@ -334,16 +338,41 @@ for j=1:trials
 %       end
   end 
 end
-[id_action]  = delete_errotrials(id_action,erroII_trialID);
-% Step 9  find out the 4th type error, which is determined by the distance
-% between the apple and the 
 
-erro_num     = erroII_num+erroI_num+errorSlitHit_num;
-erro_rate    = erro_num/(apple_num-nograb_num);
-delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
-
+end
 
 % v_index= 
+function [errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,index_tip_x)
+errorSlitHit_num     = 0;
+errorSlitHit_trialID = [];
+trials               = length(id_action(:,1));
+for i=1:trials
+    time_window  = id_action(i,6)-10:id_action(i,6)+10;
+    v_index_x    = [false;diff(index_tip_x(time_window))];
+%     figure
+%     subplot(211)
+%     plot(index_tip_x(time_window),time_window,'r-*')
+%     hold on 
+%     plot([Edge_x,Edge_x],[time_window(1),time_window(end)],'g-')
+%     plot([min(index_tip_x(time_window)),max(index_tip_x(time_window))],[id_action(i,6),id_action(i,6)],'g-')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index'])
+%     hold off
+%     subplot(212)
+%     plot(v_index_x,time_window,'r-*')
+%     hold on 
+%     plot([min(v_index_x),max(v_index_x)],[id_action(i,6),id_action(i,6)],'g-')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
+%     hold off
+    if mean(v_index_x(9:11))<5 % 
+        errorSlitHit_num     = errorSlitHit_num+1;
+        errorSlitHit_trialID = [errorSlitHit_trialID,id_action(i,1)];
+    end
+end
+% [id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
+end 
+
+
+
 function [x,y] = readout(M,threshold,raw_hand)
     x  = raw_hand(:,M(1));
     y  = raw_hand(:,M(2));
