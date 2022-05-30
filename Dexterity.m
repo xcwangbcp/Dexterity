@@ -183,15 +183,16 @@ for i= 1:trials
            id_action(i,6:7)=  0;
         end
 end
-[id_action]=delete_errotrials(id_action,erroI_trialID);
+% [id_action]=delete_errotrials(id_action,erroI_trialID);
 fclose(fid);
 
 % Step9,find out the 3rd type of error,which is hit the slit
-[errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand.index_tip_x);
-[erroWander_num ,erroWander_trialID]    = wanderError(id_action,Hand,apple_x,filename_raw_hand);
-[erroGrisp_num,erroGrisp_trialID]       = precisGrispError(id_action,Hand,apple_x,apple_y);
-[id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
+[erroGrisp_num,erroGrisp_trialID]       = precisGrispError(id_action,Hand,apple_x,apple_y,filename_raw_hand);
+% [errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand.index_tip_x);
+% [erroWander_num ,erroWander_trialID]    = wanderError(id_action,Hand,apple_x,filename_raw_hand);
 
+% [id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
+                                                                                                                          
 
 erro_num     = erroWander_num+erroI_num+errorSlitHit_num;
 erro_rate    = erro_num/(apple_num-nograb_num);
@@ -199,7 +200,7 @@ delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms un
 % precision grisp error
 % Step 9  find out the 4th type error, which is determined by the distance
 % between the apple and the joints of index and thumb
-function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,apple,apple_y)
+function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,apple,apple_y,filename_raw_hand)
  erroGrisp_num     = 0; 
  erroGrisp_trialID = [];
  trials            = length(id_action(:,1));
@@ -258,10 +259,11 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
     legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple')
     subplot(212)
     plot(time_window,theta,'r-o')
-    if v_index_x(10)<5
-        erroGrisp_num     = erroGrisp_num+1;
-        erroGrisp_trialID = [erroGrisp_trialID,id_action(j,1)];
-    end
+    title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
+%     if v_index_x(10)<5
+%         erroGrisp_num     = erroGrisp_num+1;
+%         erroGrisp_trialID = [erroGrisp_trialID,id_action(j,1)];
+%     end
  end
 end
 
@@ -287,17 +289,17 @@ index_tip                       = [index_tip_x,406-index_tip_y];
 thumb_tip                       = [thumb_tip_x,406-thumb_tip_y];
 
 for j=1:trials
-    time_window  = id_action(j,6):id_action(j,7);% which is the in+out of the slit
+    time_window      = id_action(j,6):id_action(j,7);% which is the in+out of the slit
     apple_window     = apple(time_window);
     index_tip_window = index_tip(time_window,:);
     thumb_tip_window = thumb_tip(time_window,:);
-    figure 
+    distance         = sqrt((index_tip_window(:,1)-thumb_tip_window(:,1)).^2+(index_tip_window(:,2)-thumb_tip_window(:,2)).^2);
+    figure
     subplot(221)
     plot(index_tip_window(:,1),time_window,'r*')
     hold on 
     plot(apple_window,time_window,'b-')
     hold on
-%     plot(index_tip_window(:,1),time_window,'r*')
     plot(thumb_tip_window(:,1),time_window,'g+')
     title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -x of index-thumb-apple'])
     hold off
@@ -308,21 +310,19 @@ for j=1:trials
     title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -y of index-thumb'])
 %     set(gca,'YDir','reverse')
     hold off
-    distance = sqrt((index_tip_window(:,1)-thumb_tip_window(:,1)).^2+(index_tip_window(:,2)-thumb_tip_window(:,2)).^2);
     subplot(223)
     plot(distance,time_window,'r')
     title([ ' trial  ' num2str(id_action(j,1)) ' Distance between index tip and thumb tip'])
 %    [pks,locs]=findpeaks(distance,time_window,'MinPeakDistance',5);
    [tmax,vmax,tmin,vmin] = extrem_num(distance,time_window');
-%    title([ ' trial  ' num2str(id_action(i,1)) ' Distance between index tip and thumb tip'])
   if ~isempty(tmin)&&length(tmax)>=2
       t     = [tmin;tmax];
       v     = [vmin;vmax];
       value = [t,v]; 
-      value_sort = sortrows(value,1);
+      value_sort      = sortrows(value,1);
       value_sort_diff = diff(value_sort);
-      pks  = length(value_sort_diff(:,1));
-      N=0;
+      pks             = length(value_sort_diff(:,1));
+      N               = 0;
       for pks_num = 1:pks
           if value_sort_diff(pks_num,1)>5&&abs(value_sort_diff(pks_num,2))>9
              N=N+1;   
@@ -338,7 +338,6 @@ for j=1:trials
 %       end
   end 
 end
-
 end
 
 % v_index= 
