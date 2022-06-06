@@ -42,7 +42,7 @@ M.apple           = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
 % M.pole    = findcolum(Txt_apple,'Pole_x','Plole_y');
 % pole_y    = raw_apple(:,M.pole(2));
 % deletet the data by 3 criterier 
-apple_x(apple_x<Hand.edge_x )             = nan;
+apple_x(apple_x<Hand.edge_x )        = nan;
 apple_x(apple_x>340)                 = nan; % 350 is the board of the glass
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
@@ -68,10 +68,9 @@ plot(apple_x,nframes,'color','c')
 %Step4: when the certain applecoming out,
 %  find out when and the coordintes of the apple,
 apple_start=[];% apple start means from the 1st appearance in the slit
-for appleLength=3:length(apple_x)-4
-    
+for appleLength=3:length(apple_x)-5
     if isnan(apple_x(appleLength))&&isnan(apple_x(appleLength-1))&&isnan(apple_x(appleLength-2))
-        if apple_x(appleLength+1)>apple_x(appleLength+2)&&apple_x(appleLength+2)>apple_x(appleLength+3)%&&apple(i+3)>apple(i+4)
+        if apple_x(appleLength+1)>apple_x(appleLength+2)&&apple_x(appleLength+2)>apple_x(appleLength+3)&&apple_x(appleLength+3)>apple_x(appleLength+4)
             if apple_x(appleLength+1)>260
                 if apple_y(appleLength+1)>195&&apple_y(appleLength+1)<210 % in certain times, there are two apples were captured...
                     apple_start=[apple_start,appleLength+1];    %e.g. 76-7-7
@@ -183,7 +182,7 @@ for i= 1:trials
            id_action(i,6:7)=  0;
         end
 end
-% [id_action]=delete_errotrials(id_action,erroI_trialID);
+[id_action]=delete_errotrials(id_action,erroI_trialID);
 fclose(fid);
 
 % Step9,find out the 3rd type of error,which is hit the slit
@@ -221,7 +220,7 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
  base_x            = Hand.base_x;
  base_y            = Hand.base_y;
  for i=1:trials
-    time_window      = id_action(i,6):id_action(i,7);
+    time_window      = id_action(i,8):id_action(i,8)+3;
     indexTip_window  = [index_tip_x(time_window),index_tip_y(time_window)];
     indexDip_window  = [index_dip_x(time_window),index_dip_y(time_window)];
     indexPip_window  = [index_pip_x(time_window),index_pip_y(time_window)];
@@ -239,11 +238,14 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
     d_indexdip2apple = zeros(L,1);
     d_thumbtip2apple = zeros(L,1);
     d_thumbpip2apple = zeros(L,1);
+    d_indtip2thutip  = zeros(L,1);
     theta            = zeros(L,1);
     for j=1:L
         d_indextip2apple(j,1)  = norm(indexTip_window(j,:)-appleP(j,:));
         d_indexdip2apple(j,1)  = norm(indexDip_window(j,:)-appleP(j,:));
         d_indexpip2apple(j,1)  = norm(indexPip_window(j,:)-appleP(j,:));
+        
+        d_indtip2thutip(j,1)   = norm(indexTip_window(j,:)-thumbTip_window(j,:));
         
         d_thumbtip2apple(j,1)  = norm(thumbTip_window(j,:)-appleP(j,:));
         d_thumbpip2apple(j,1)  = norm(thumbPip_window(j,:)-appleP(j,:));
@@ -252,18 +254,19 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
         cc = norm(base_window(j,:)-indexMcp_window(j,:));
         theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);                   
     end
-    figure
-    subplot(211)
-    plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
-        'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v')
-    legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple')
-    subplot(212)
-    plot(time_window,theta,'r-o')
-    title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
-%     if v_index_x(10)<5
-%         erroGrisp_num     = erroGrisp_num+1;
-%         erroGrisp_trialID = [erroGrisp_trialID,id_action(j,1)];
-%     end
+%     figure
+%     subplot(211)
+%     plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
+%         'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
+%         'm-+')
+%     legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
+%     subplot(212)
+%     plot(time_window,theta,'r-o')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' degree of  »¢¿Ú(in pixle)'])
+    if d_indtip2thutip(:)>30|theta(:)>30
+        erroGrisp_num     = erroGrisp_num+1;
+        erroGrisp_trialID = [erroGrisp_trialID,id_action(i,1)];
+    end
  end
 end
 
