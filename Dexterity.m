@@ -196,13 +196,23 @@ fclose(fid);
 [erroGrisp_num,erroGrisp_trialID]       = precisGrispError(id_action,Hand,apple_x,apple_y,filename_raw_hand);
 [errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand.index_tip_x);
 [erroWander_num ,erroWander_trialID]    = wanderError(id_action,Hand,apple_x,filename_raw_hand);
-errorID = [errorSlitHit_trialID erroGrisp_trialID erroWander_trialID];
-[id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
-                                                                                                                          
+R.errorID        = unique ([errorSlitHit_trialID erroGrisp_trialID erroWander_trialID]);
+R.RT_all      = round((id_action(:,7)-id_action(:,6))*1000/60,1);
+R.RT_error    = round((id_action(R.errorID,7)-id_action(R.errorID,6))*1000/60,1);
+[id_action]   = delete_errotrials(id_action,R.errorID);
+R.correID     = id_action(:,1);
+R.RT_correct  = round((id_action(:,7)-id_action(:,6))*1000/60,1);
+% in ms
 
-erro_num     = erroWander_num+erroI_num+errorSlitHit_num;
-erro_rate    = erro_num/(apple_num-nograb_num);
-delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
+R.erro_num     = length(R.errorID);
+R.slitE_rate   = errorSlitHit_num/(apple_num-nograb_num);
+R.wandE_rate   = erroWander_num/(apple_num-nograb_num);
+R.grisE_rate   = erroGrisp_num/(apple_num-nograb_num);
+R.erro_rate    = R.erro_num/(apple_num-nograb_num);
+R.savefile     = [filename_raw_hand(1:end-4) '.mat'];
+save(R.savefile,'R');
+clear
+% delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
 % precision grisp error
 % Step 9  find out the 4th type error, which is determined by the distance
 % between the apple and the joints of index and thumb
