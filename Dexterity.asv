@@ -43,7 +43,6 @@ M.apple           = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
 % pole_y    = raw_apple(:,M.pole(2));
 % deletet the data by 3 criterier 
 apple_x(apple_x<Hand.edge_x )        = nan;
-apple_y(apple_x<Hand.edge_x )        = nan;
 apple_x(apple_x>340)                 = nan; % 350 is the board of the glass
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
@@ -59,11 +58,11 @@ nframe           = length(Hand.index_tip_x);
 nframes          = 1: nframe;
 % delet the apple was taken back by human only the apple��s coordinates
 % right than mostposition+20
-for i=1:length(locs_sign)-2
-    if apple_x(locs_sign(i))>mostposition+20
-       apple_x(locs_sign(i)-2:locs_sign(i)+2)=nan;
-    end 
-end
+% for i=1:length(locs_sign)-2
+%     if apple(locs_sign(i))>mostposition+20
+%        apple(locs_sign(i)-2:locs_sign(i)+2)=nan;
+%     end 
+% end
 plot(apple_x,nframes,'color','c')
 
 %Step4: when the certain applecoming out,
@@ -128,7 +127,7 @@ for j=1:apple_num
 %     apple_start_end_disappear(j,6) = apple_x(apple_start_end_disappear(j,3));% 
     % if disappear location is 5 ps right of the stable apple,means
     %the apple is taken back by experimenter,�趨5,sometimes make mistakes
-    if apple_x(apple_start_end_disappear(j,4))>mostposition+8          
+    if apple_x(apple_start_end_disappear(j,4))>mostposition+6          
          invalid_num          = invalid_num+1;
          invalid_id           = [invalid_id;j];
          id_action(j,:)      = [j,0,0,apple_start_end_disappear(j,4)];
@@ -203,9 +202,9 @@ R.errorID     = unique ([errorSlitHit_trialID erroGrisp_trialID erroWander_trial
 R.RT_all      = round((id_action(:,7)-id_action(:,6))*1000/60);
 [locs,~]      = find(bsxfun(@eq,id_action(:,1),R.errorID));
 R.RT_error    = round((id_action(locs,7)-id_action(locs,6))*1000/60);
-id_act_correct= delete_errotrials(id_action,R.errorID);
-R.correID     = id_act_correct(:,1);
-R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);
+[id_action]   = delete_errotrials(id_action,R.errorID);
+R.correID     = id_action(:,1);
+R.RT_correct  = round((id_action(:,7)-id_action(:,6))*1000/60);
 % in ms
 
 R.erro_num     = length(R.errorID);
