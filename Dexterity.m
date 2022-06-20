@@ -94,6 +94,7 @@ end
 % end
 hold on 
 plot(apple_x(apple_start),apple_start,'ro');
+title(Hand.filename_raw_hand(1:end-8));
 hold off
 invalid_id = [];grab_status =[];
 grab_id    =[];
@@ -192,9 +193,18 @@ end
 % fclose(fid);
 
 % Step9,find out the 3rd type of error,which is hit the slit
-[erroGrisp_num,erroGrisp_trialID]       = precisGrispError(id_action,Hand,apple_x,apple_y);
-[errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand);
-[erroWander_num ,erroWander_trialID]    = wanderError(id_action,Hand,apple_x);
+[erroGrisp_num,erroGrisp_trialID]   = precisGrispError(id_action,Hand,apple_x,apple_y);
+% erroGrisp_trialID       = intersect(erroGrisp_trialID,invalid_id);
+% erroGrisp_num           = length(erroGrisp_trialID);
+
+[errorSlitHit_num,errorSlitHit_trialID]= slitHitError(id_action,Hand);
+% errorSlitHit_trialID    = intersect(errorSlitHit_trialID,invalid_id);
+% errorSlitHit_num        = length(errorSlitHit_trialID );
+
+[erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand,apple_x);
+% erroWander_trialID      = intersect(erroWander_trialID,invalid_id);
+% erroWander_num          = length(erroWander_trialID);
+
 R.applenum    = apple_num;
 R.erroGrispID = erroGrisp_trialID';
 R.errorSlitID = errorSlitHit_trialID';
@@ -210,10 +220,10 @@ R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);
 % in ms
 invalid_num    = length(invalid_id);
 R.erro_num     = length(R.errorID);
-R.slitE_rate   = errorSlitHit_num/(apple_num-invalid_num);
-R.wandE_rate   = erroWander_num/(apple_num-invalid_num);
-R.grisE_rate   = erroGrisp_num/(apple_num-invalid_num);
-R.erro_rate    = R.erro_num/(apple_num-invalid_num);
+R.slitE_rate   = errorSlitHit_num/apple_num;
+R.wandE_rate   = erroWander_num/apple_num;
+R.grisE_rate   = erroGrisp_num/apple_num;
+R.erro_rate    = (R.erro_num-invalid_num)/(apple_num-invalid_num);
 R.savefile     = [Hand.filename_raw_hand(1:end-9) '.mat'];
 R.id_action    = id_action;
 save(R.savefile,'R');
@@ -278,15 +288,15 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
         cc = norm(base_window(j,:)-indexMcp_window(j,:));
         theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);                   
     end
-    figure
-    subplot(211)
-    plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
-        'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
-        'm-+')
-    legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
-    subplot(212)
-    plot(time_window,theta,'r-o')
-    title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' degree of »¢¿Ú(in pixle)'])
+%     figure
+%     subplot(211)
+%     plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
+%         'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
+%         'm-+')
+%     legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
+%     subplot(212)
+%     plot(time_window,theta,'r-o')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' degree of »¢¿Ú(in pixle)'])
     if d_indtip2thutip(:)>30|theta(:)>30
         erroGrisp_num     = erroGrisp_num+1;
         erroGrisp_trialID = [erroGrisp_trialID,id_action(i,1)];
@@ -322,25 +332,25 @@ for j=1:trials
     index_tip_window = index_tip(time_window,:);
     thumb_tip_window = thumb_tip(time_window,:);
     distance         = sqrt((index_tip_window(:,1)-thumb_tip_window(:,1)).^2+(index_tip_window(:,2)-thumb_tip_window(:,2)).^2);
-    figure
-    subplot(221)
-    plot(index_tip_window(:,1),time_window,'r*')
-    hold on 
-    plot(apple_window,time_window,'b-')
-    hold on
-    plot(thumb_tip_window(:,1),time_window,'g+')
-    title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -x of index-thumb-apple'])
-    hold off
-    subplot(222)
-    plot(index_tip_window(:,2),time_window,'r*')
-    hold on 
-    plot(thumb_tip_window(:,2),time_window,'g+')
-    title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -y of index-thumb'])
-%     set(gca,'YDir','reverse')
-    hold off
-    subplot(223)
-    plot(distance,time_window,'r')
-    title([ ' trial  ' num2str(id_action(j,1)) ' Distance between index tip and thumb tip'])
+%     figure
+%     subplot(221)
+%     plot(index_tip_window(:,1),time_window,'r*')
+%     hold on 
+%     plot(apple_window,time_window,'b-')
+%     hold on
+%     plot(thumb_tip_window(:,1),time_window,'g+')
+%     title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -x of index-thumb-apple'])
+%     hold off
+%     subplot(222)
+%     plot(index_tip_window(:,2),time_window,'r*')
+%     hold on 
+%     plot(thumb_tip_window(:,2),time_window,'g+')
+%     title([filename_raw_hand(1:end-8)  ' trial  ' num2str(id_action(j,1)) ' -y of index-thumb'])
+% %     set(gca,'YDir','reverse')
+%     hold off
+%     subplot(223)
+%     plot(distance,time_window,'r')
+%     title([ ' trial  ' num2str(id_action(j,1)) ' Distance between index tip and thumb tip'])
 %    [pks,locs]=findpeaks(distance,time_window,'MinPeakDistance',5);
    [tmax,vmax,tmin,vmin] = extrem_num(distance,time_window');
   if ~isempty(tmin)&&length(tmax)>=2
@@ -379,20 +389,20 @@ Edge_x               = Hand.edge_x;
 for i=1:trials
     time_window  = id_action(i,6)-10:id_action(i,6)+10;
     v_index_x    = [false;diff(index_tip_x(time_window))];
-    figure
-    subplot(211)
-    plot(index_tip_x(time_window),time_window,'r-*')
-    hold on 
-    plot([Edge_x,Edge_x],[time_window(1),time_window(end)],'g-')
-    plot([min(index_tip_x(time_window)),max(index_tip_x(time_window))],[id_action(i,6),id_action(i,6)],'g-')
-    title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index'])
-    hold off
-    subplot(212)
-    plot(v_index_x,time_window,'r-*')
-    hold on 
-    plot([min(v_index_x),max(v_index_x)],[id_action(i,6),id_action(i,6)],'g-')
-    title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
-    hold off
+%     figure
+%     subplot(211)
+%     plot(index_tip_x(time_window),time_window,'r-*')
+%     hold on 
+%     plot([Edge_x,Edge_x],[time_window(1),time_window(end)],'g-')
+%     plot([min(index_tip_x(time_window)),max(index_tip_x(time_window))],[id_action(i,6),id_action(i,6)],'g-')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index'])
+%     hold off
+%     subplot(212)
+%     plot(v_index_x,time_window,'r-*')
+%     hold on 
+%     plot([min(v_index_x),max(v_index_x)],[id_action(i,6),id_action(i,6)],'g-')
+%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' -x of index speed(in pixle/frame)'])
+%     hold off
     if mean(v_index_x(9:11))<5 % 
         errorSlitHit_num     = errorSlitHit_num+1;
         errorSlitHit_trialID = [errorSlitHit_trialID,id_action(i,1)];
@@ -435,13 +445,13 @@ function [tmax,vmax,tmin,vmin] = extrem_num(p,f)
     vmin = v (Lmin); % values of the local min elements
 % figure 
 % plot them on a figure
-    subplot(224)
-    plot(v,t);
-    xlabel('t'); ylabel('v');
-    hold on;
-    plot(vmax, tmax, 'r+');
-    plot(vmin,tmin, 'g+');
-    hold off;
+%     subplot(224)
+%     plot(v,t);
+%     xlabel('t'); ylabel('v');
+%     hold on;
+%     plot(vmax, tmax, 'r+');
+%     plot(vmin,tmin, 'g+');
+%     hold off;
 end
 
 function [location_hand] = inthepicture(raw,M)  
