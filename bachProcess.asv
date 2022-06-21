@@ -47,7 +47,7 @@ figure
 subplot(211)
 errorbar(RT,RT_std,'r')
 % axis([0 6 200 1000])
-title('reaction time in ms')
+title('reaction time in ms in May-22')
 xticklabels(groupname)
 subplot(212)
 errorbar(errate_mean,errate_std,'b')
