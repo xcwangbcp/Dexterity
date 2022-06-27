@@ -1,5 +1,6 @@
 clear;close all
 monkey_name = {'2','76','132','43','137','187'};
+monkey_name = {'2','76','132','43','44','137','187','159'};
 monkey_num  = length(monkey_name);
 % control={'95','2','76','35'};nose={'133','132','13'};stritum={'187','43','44'};
 % gastrointestional={'137','195','159','25','60','70'};
@@ -58,28 +59,18 @@ title('Time to fetch an apple')
 ylabel('time in ms')
 
 subplot(212)
-bar(1:4,rate,'FaceColor',[1 1 1])
+bar(1:4,rate,0.4,'FaceColor',[1 1 1])
 hold on
 errorbar(1:4, rate,rate_std,'o','linewidth',1.5,'LineStyle','none')
 xticklabels(groupname)
 axis([0 5 0 1.1])
 title('Error rate')
 ylabel('%')
+xlabel('Group behavior data on apple-Machine in May 26/28/31')
+savefile='2021-5.';
+save(savefile,'ctrl','nose','gas','stri')
 
 
-
-figure
-subplot(211)
-errorbar(RT,RT_std,'r')
-% axis([0 6 200 1000])
-title('reaction time in ms in May-22')
-xticklabels(groupname)
-subplot(212)
-errorbar(errate_mean,errate_std,'b')
-xticks([1 2 3 4 5])
-xticklabels(monkey_name)
-axis([0 6 0 1.2])
-title('correct rate %')
 
 
 function [RT_mean,RT_std,erro_rat,errate_std] = singleMonkey(monkey_name) 
@@ -91,6 +82,7 @@ RT          = [];
 for i= 1:length_file
     R            = load(list(i,:));
     erro_rate(i) = R.R.erro_rate;
+
     if erro_rate(i)>1
         erro_rate(i)=1;
     end
@@ -101,5 +93,8 @@ erro_rat  = mean(erro_rate);
 errate_std= std(erro_rate); 
 RT_mean   = mean(RT);
 RT_std    = std(RT);
+
+% figure
+% errorbar( RT_mean,RT_std,'xr')
 
 end
