@@ -103,8 +103,8 @@ for j=1:apple_num
         time_window = [apple_start(j):length(apple_x)];% the last apple show up and wait for 20 seconds
     end
     apple_window       = apple_x(time_window);
-    index_tip_x_window = Hand.index_tip_x(time_window);
-    index_tip_y_window = Hand.index_tip_y(time_window);
+%     index_tip_x_window = Hand.index_tip_x(time_window);
+%     index_tip_y_window = Hand.index_tip_y(time_window);
 %     figure    
 %     plot(index_tip_x_window ,time_window,'r')
 %     hold on 
