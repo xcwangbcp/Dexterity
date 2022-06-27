@@ -31,7 +31,7 @@ Hand.MCP2          = findcolum(Txt_hand,'MCP2_x','MCP2_y','MCP2_p');
 [Hand.index_mcp_x,Hand.index_mcp_y] = readout(Hand.MCP2,threshold_hand,raw_hand);
 
 
-Hand.slot      = findcolum(Txt_apple,'SlotTop_x','SlotBottom_x','SlotTop_y','SlotBottom_y');
+Hand.slot   = findcolum(Txt_apple,'SlotTop_x','SlotBottom_x','SlotTop_y','SlotBottom_y');
 Hand.edge_x = (mean(raw_apple(:,Hand.slot(1)))+mean(raw_apple(:,Hand.slot(2))))/2;
 % Edge_y_top  = mean(raw_apple(:,Hand.slot(3)));
 % Edge_y_bot  = mean(raw_apple(:,Hand.slot(4)));
@@ -42,15 +42,60 @@ Hand.apple                  = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p')
 % M.pole    = findcolum(Txt_apple,'Pole_x','Plole_y');
 % pole_y    = raw_apple(:,M.pole(2));
 % deletet the data by 3 criterier 
+
+
+[apple_start,diff_apple,mostposition]  = apple(Hand);
+[id_action,invalid_id]                 = search_action(Hand,apple_start,diff_apple,mostposition);
+
+% Step9,find out the 3rd type of error,which is hit the slit
+[erroGrisp_num,erroGrisp_trialID]   = precisGrispError(id_action,Hand);
+% erroGrisp_trialID       = intersect(erroGrisp_trialID,invalid_id);
+% erroGrisp_num           = length(erroGrisp_trialID);
+
+[errorSlitHit_num,errorSlitHit_trialID] = slitHitError(id_action,Hand);
+% errorSlitHit_trialID    = intersect(errorSlitHit_trialID,invalid_id);
+% errorSlitHit_num        = length(errorSlitHit_trialID );
+
+[erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand);
+% erroWander_trialID      = intersect(erroWander_trialID,invalid_id);
+% erroWander_num          = length(erroWander_trialID);
+
+R.applenum    = length(apple_start);
+R.erroGrispID = erroGrisp_trialID';
+R.errorSlitID = errorSlitHit_trialID';
+R.erroWandeID = erroWander_trialID';
+R.invalidID   = invalid_id;
+R.errorID     = unique ([errorSlitHit_trialID erroGrisp_trialID erroWander_trialID]);
+R.RT_all      = round((id_action(:,7)-id_action(:,6))*1000/60);
+[locs,~]      = find(bsxfun(@eq,id_action(:,1),R.errorID));
+R.RT_error    = round((id_action(locs,7)-id_action(locs,6))*1000/60);
+id_act_correct= delete_errotrials(id_action,R.errorID);
+R.correID     = id_act_correct(:,1);
+R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);
+% in ms
+invalid_num    = length(invalid_id);
+R.erro_num     = length(R.errorID);
+apple_num      = length(apple_start);
+R.slitE_rate   = errorSlitHit_num/apple_num;
+R.wandE_rate   = erroWander_num/apple_num;
+R.grisE_rate   = erroGrisp_num/apple_num;
+R.erro_rate    = (R.erro_num-invalid_num)/(apple_num-invalid_num);
+R.savefile     = [Hand.filename_raw_hand(1:end-9) '.mat'];
+R.id_action    = id_action;
+save(R.savefile,'R');
+clear
+% delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
+% precision grisp error
+% Step 9  find out the 4th type error, which is determined by the distance
+% between the apple and the joints of index and thumb
+function [id_action,invalid_id] =search_action(Hand,apple_start,diff_apple,mostposition)
+apple_x       = Hand.apple_x;
+apple_y       = Hand.apple_y;
+apple_num     = length(apple_start);
 invalid_id    = [];
 grab_status   = [];
 grab_id       = [];
-[apple_start,diff_apple,mostposition]  = apple(Hand);
-apple_num                 = length(apple_start);
-% apple_start_end_disappear = zeros(apple_num,6);
-id_action                 = zeros(apple_num,4);
-apple_x   = Hand.apple_x;
-apple_y   = Hand.apple_y;
+id_action     = zeros(apple_num,8);
 for j=1:apple_num
     if j<apple_num
         time_window = [apple_start(j):apple_start(j+1)];
@@ -67,17 +112,16 @@ for j=1:apple_num
 %     title(num2str(i));
     id_action (j,1) = j ; % trial
     id_action (j,2) = apple_start(j); % apple come out time
-    stop_loc = find(diff_apple(time_window)>-0.05,1,'first');
+    stop_loc = find(diff_apple(time_window)>-0.05,1,'first'); % -0.05
     if stop_loc
        apple_end = stop_loc;
     else
        apple_end = find(diff_apple(time_window)==-min(abs(diff_apple(time_window))));
     end
-    % -0.05
     id_action (j,3) = time_window(1)+ apple_end-1; % apple stop time
     apple_disappear = find(isnan(apple_window),1,'first');% 
     if apple_disappear-stop_loc<20
-        apple_disappear = stop_loc+200;% sometimes the data make the disappear time close to the stoploc
+        apple_disappear = stop_loc+500;% sometimes the data make the disappear time close to the stoploc
     end
     id_action (j,4) = time_window(1)+ apple_disappear-2; % apple disappear time
 %     apple_start_end_disappear(j,6) = apple_x(apple_start_end_disappear(j,3));% 
@@ -100,18 +144,14 @@ invalid_id = unique(invalid_id);
 % Step6:find out the errotypeI, which is grab the outside of the slitwant_count = 0; success_count = 0;
 fwd_time       = []; 
 back_time      = [];
-erroI_trialID  = [];
-erroI_num      = 0;
 trials         = length(id_action(:,1));
 for i= 1:trials
-    fwd_count =0; % 
         for j=id_action(i,2):id_action(i,4)% from the show up time to apple_disappear_time(i)  
             if Hand.index_tip_x(j-1,1)<Hand.index_tip_x(j,1)&&Hand.index_tip_x(j,1)<=Hand.edge_x...
-               && Hand.index_tip_x(j+1,1)>=Hand.edge_x&&~isnan(apple_x(j))  %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)
-               fwd_count = fwd_count+1;                    % 
-               fwd_time  = [fwd_time,j];                   %           
-               k = j;                                      %
-               while k<j+1000                                     % 
+               && Hand.index_tip_x(j+1,1)>=Hand.edge_x&&~isnan(apple_x(j))  %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)                 
+               fwd_time  = [fwd_time,j];                              
+               k = j;                                      
+               while k<j+1000                                 
 %                     if Hand.index_tip_x(k+1,1)<Hand.index_tip_x(k,1)&&Hand.index_tip_x(k,1)<=Hand.edge_x...
 %                        &&Hand.index_tip_x(k-1,1)>=Hand.edge_x    %&&index_tip_x(k-1,1)<index_tip_x(k-2,1) index_tip_x(k+2,1)<index_tip_x(k+1,1)&&
                         if Hand.index_tip_x(k,1)>=Hand.edge_x&&Hand.index_tip_x(k+1,1)<=Hand.edge_x
@@ -129,55 +169,14 @@ for i= 1:trials
          [~,touch_time ]  = max(index_Y );
          id_action(i,8)   = touch_time+fwd_time(end);
 end
-% [id_action]=delete_errotrials(id_action,erroI_trialID);
-% fclose(fid);
+end
 
-% Step9,find out the 3rd type of error,which is hit the slit
-[erroGrisp_num,erroGrisp_trialID]   = precisGrispError(id_action,Hand,apple_x,apple_y);
-% erroGrisp_trialID       = intersect(erroGrisp_trialID,invalid_id);
-% erroGrisp_num           = length(erroGrisp_trialID);
-
-[errorSlitHit_num,errorSlitHit_trialID]= slitHitError(id_action,Hand);
-% errorSlitHit_trialID    = intersect(errorSlitHit_trialID,invalid_id);
-% errorSlitHit_num        = length(errorSlitHit_trialID );
-
-[erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand,apple_x);
-% erroWander_trialID      = intersect(erroWander_trialID,invalid_id);
-% erroWander_num          = length(erroWander_trialID);
-
-R.applenum    = apple_num;
-R.erroGrispID = erroGrisp_trialID';
-R.errorSlitID = errorSlitHit_trialID';
-R.erroWandeID = erroWander_trialID';
-R.invalidID   = invalid_id;
-R.errorID     = unique ([errorSlitHit_trialID erroGrisp_trialID erroWander_trialID]);
-R.RT_all      = round((id_action(:,7)-id_action(:,6))*1000/60);
-[locs,~]      = find(bsxfun(@eq,id_action(:,1),R.errorID));
-R.RT_error    = round((id_action(locs,7)-id_action(locs,6))*1000/60);
-id_act_correct= delete_errotrials(id_action,R.errorID);
-R.correID     = id_act_correct(:,1);
-R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);
-% in ms
-invalid_num    = length(invalid_id);
-R.erro_num     = length(R.errorID);
-R.slitE_rate   = errorSlitHit_num/apple_num;
-R.wandE_rate   = erroWander_num/apple_num;
-R.grisE_rate   = erroGrisp_num/apple_num;
-R.erro_rate    = (R.erro_num-invalid_num)/(apple_num-invalid_num);
-R.savefile     = [Hand.filename_raw_hand(1:end-9) '.mat'];
-R.id_action    = id_action;
-save(R.savefile,'R');
-clear
-% delta_time   = mean((correct_trial(:,2)-correct_trial(:,1))*1000/60); % in ms unit 
-% precision grisp error
-% Step 9  find out the 4th type error, which is determined by the distance
-% between the apple and the joints of index and thumb
 function [apple_start,diff_apple,mostposition] = apple(Hand)
 apple_x = Hand.apple_x;
 apple_y = Hand.apple_y;
-apple_x(apple_x<Hand.edge_x )        = nan;
-apple_y(apple_x<Hand.edge_x )        = nan;
-apple_x(apple_x>340)                 = nan; % 340/350 is the board of the glass
+apple_x(apple_x<Hand.edge_x) = nan;
+apple_y(apple_x<Hand.edge_x) = nan;
+apple_x(apple_x>340)         = nan; % 340/350 is the board of the glass
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
 diff_apple  = [nan;diff_apple];
@@ -229,14 +228,13 @@ hold on
 plot(apple_x(apple_start),apple_start,'ro');
 title(Hand.filename_raw_hand(1:end-8));
 hold off
-
 % fid=fopen([filename_raw_hand(1:end-4),'.txt'],'w');
 % fprintf(fid,'%s %s %s %s %s\n','trialNo','appleStart','appleEnd','appleDisappear','grab/nograb');
 % Step 5: find out the no-grab trial and delete it ,make it related to the apple
 % trial definition: a new/old apple come out 
 end 
 
-function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,apple,apple_y)
+function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand)
  erroGrisp_num       = 0; 
  erroGrisp_trialID   = [];
  trials              = length(id_action(:,1));
@@ -257,6 +255,8 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
  base_x              = Hand.base_x;
  base_y              = Hand.base_y;
  filename_raw_hand   = Hand.filename_raw_hand;
+ apple_x             = Hand.apple_x;
+ apple_y             = Hand.apple_y;
  for i=1:trials
     time_window      = id_action(i,8):id_action(i,8)+3;
     indexTip_window  = [index_tip_x(time_window),index_tip_y(time_window)];
@@ -267,7 +267,7 @@ function [erroGrisp_num,erroGrisp_trialID] = precisGrispError(id_action,Hand,app
     thumbTip_window  = [thumb_tip_x(time_window),thumb_tip_y(time_window)];
     thumbPip_window  = [thumb_pip_x(time_window),thumb_pip_y(time_window)];
     thumbMcp_window  = [thumb_mcp_x(time_window),thumb_mcp_y(time_window)];
-    appleP           = [apple(time_window),apple_y(time_window)];
+    appleP           = [apple_x(time_window),apple_y(time_window)];
     
     base_window      = [base_x(time_window), base_y(time_window)];
     L                = length(time_window);
@@ -313,7 +313,7 @@ end
 % Step 7:find out the error typeII,which is to pick out the wandering trials in the left
 % If both fingers touched the food but the monkey released it and tried to pick it up again,
 % we judged it as a ��wandering error��(nature 2012)
-function [erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand,apple)
+function [erroWander_num ,erroWander_trialID] = wanderError(id_action,Hand)
 erroWander_num     = 0; 
 erroWander_trialID = [];
 trials             = length(id_action(:,1));
@@ -323,6 +323,7 @@ index_tip_y        = Hand.index_tip_y;
 thumb_tip_x        = Hand.thumb_tip_x;
 thumb_tip_y        = Hand.thumb_tip_y;
 Edge_x             = Hand.edge_x;
+apple_x            = Hand.apple_x;
 filename_raw_hand  = Hand.filename_raw_hand;
 index_tip_x(index_tip_x<Edge_x) = nan;
 index_tip_x(index_tip_x>340)    = nan;
@@ -332,7 +333,7 @@ thumb_tip                       = [thumb_tip_x,406-thumb_tip_y];
 
 for j=1:trials
     time_window      = id_action(j,6):id_action(j,7);% which is the in+out of the slit
-    apple_window     = apple(time_window);
+    apple_window     = apple_x(time_window);
     index_tip_window = index_tip(time_window,:);
     thumb_tip_window = thumb_tip(time_window,:);
     distance         = sqrt((index_tip_window(:,1)-thumb_tip_window(:,1)).^2+(index_tip_window(:,2)-thumb_tip_window(:,2)).^2);
@@ -414,8 +415,6 @@ for i=1:trials
 end
 % [id_action]    = delete_errotrials(id_action,errorSlitHit_trialID);
 end 
-
-
 
 function [x,y] = readout(M,threshold,raw_hand)
     x  = raw_hand(:,M(1));
