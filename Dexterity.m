@@ -6,7 +6,7 @@ monkey_name = {'2','76','132','43','137','187'};
 [raw_hand,Txt_hand,~]        = xlsread([pathname,filename_raw_hand]);
 filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 [raw_apple,Txt_apple,~]      = xlsread([pathname,filename_raw_apple]);
-raw_apple = table2array(readtable(filename_raw_apple));
+% raw_apple = table2array(readtable(filename_raw_apple));
 
 
 % list        = ls([char(monkey_name(1)) '-*-hand.csv']);
