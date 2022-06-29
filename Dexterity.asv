@@ -2,42 +2,46 @@ close all
 clear 
 monkey_name = {'2','76','132','43','137','187'};
 %Step1  read the data into the workspace
-[filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
-[raw_hand,Txt_hand,~]        = xlsread([pathname,filename_raw_hand]);
-filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
-[raw_apple,Txt_apple,~]      = xlsread([pathname,filename_raw_apple]);
-raw_apple = table2array(readtable(filename_raw_apple));
+% [F.filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
+% [F.raw_hand,F.Txt_hand,~]        = xlsread([pathname,F.filename_raw_hand]);
+% F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
+% [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
+% raw_apple = table2array(readtable(filename_raw_apple));
 
 
-% list        = ls([char(monkey_name(1)) '-*-hand.csv']);
-% length_file = size(list);
-% length_file = length_file(1);
-% 
-% for i= 1:length_file
-%     filename_raw_hand = list(i,:);
-%     filename_raw_apple = [filename_raw_hand(1:end-10) 'apple.csv'];
-%     
-%     
-%     
-%     [raw_hand,Txt_hand,~]        = xlsread(filename_raw_hand);
-%     [raw_apple,Txt_apple,~]      = xlsread(filename_raw_apple);
-% 
-%     if erro_rate(i)>1
-%         erro_rate(i)=1;
-%     end
-%     R.R.RT_all   = R.R.RT_all(R.R.RT_all<800);
-%     RT           = [RT;R.R.RT_all];
-% end 
-% erro_rat  = mean(erro_rate);
-% errate_std= std(erro_rate); 
-% RT_mean   = mean(RT);
-% RT_std    = std(RT);
+list        = ls([char(monkey_name(1)) '-*-hand.csv']);
+length_file = size(list);
+length_file = length_file(1); 
+RT = [];
+for i= 1:length_file
+    i
+    F.filename_raw_hand          = list(i,:)
+    F.filename_raw_apple         = [F.filename_raw_hand(1:end-9) '-apple.csv'];
+    [F.raw_hand,F.Txt_hand,~]    = xlsread(F.filename_raw_hand);
+    [F.raw_apple,F.Txt_apple,~]  = xlsread(F.filename_raw_apple);
+    R = singlefile(F);
+    RT         = [RT; R.RT_all(R.RT_all<1000)];
+    if R.erro_rate>1
+        R.erro_rate=1;
+    end
+    erro_rate(i)  = R.erro_rate;
+    slitE_rate(i) = R.slitE_rate;
+    wandE_rate(i) = R.wandE_rate;
+    grisE_rate(i) = R.grisE_rate;  
+end
+erro_rate_mean  = mean(erro_rate);
+RT_mean         = mean(RT);
+slitE_rate_mean = mean(slitE_rate);
+wandE_rate_mean = mean(wandE_rate);
+grisE_rate_mean = mean(grisE_rate);
+filename = [F.filename_raw_hand(1:end-9) '.xlsx'];
+title    ={'E_total','E_slithit','E_wand','E_grisp','RT'};
+lswrite(filename,A,sheet,erro_rate_mean;slitE_rate_mean;wandE_rate_mean;grisE_rate_mean;)
 
-% figure
-% errorbar( RT_mean,RT_std,'xr')
 
+function R = singlefile(F)
 
-Hand   = read_csv(Txt_hand,raw_hand,raw_apple,filename_raw_hand,Txt_apple);
+Hand   = read_csv(F.Txt_hand,F.raw_hand,F.raw_apple,F.filename_raw_hand,F.Txt_apple);
 apple  = apple_trace(Hand);
 action = search_action(Hand,apple);
 
@@ -50,7 +54,8 @@ erroGrisp    = precisGrispError(action.action,Hand);
 errorSlitHit = slitHitError(action.action,Hand);
 erroWander   = wanderError(action.action,Hand);
  R           = savewhat(apple,erroGrisp,errorSlitHit,erroWander,action);
-clear 
+end
+
 % erroWander_trialID      = intersect(erroWander_trialID,invalid_id);
 function R    = savewhat(apple,erroGrisp,errorSlitHit,erroWander,action)
 
@@ -75,7 +80,7 @@ R.grisE_rate   = erroGrisp.num/(R.applenum-invalid_num);
 R.erro_rate    = R.erro_num/(R.applenum-invalid_num);
 R.id_action    = action.action;
 R.savefile     = erroGrisp.filename;
-save(R.savefile,'R');
+save([R.savefile '.mat'],'R');
 end
 
 
@@ -109,8 +114,9 @@ Hand.edge_x                 = (mean(raw_apple(:,Hand.slot(1)))+mean(raw_apple(:,
 Hand.apple                  = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
 [Hand.apple_x,Hand.apple_y] = readout(Hand.apple,threshold_apple,raw_apple);
 Hand.filename_raw_hand      = filename_raw_hand;
-% M.pole    = findcolum(Txt_apple,'Pole_x','Plole_y');
-% pole_y    = raw_apple(:,M.pole(2));
+M.pole         = findcolum(Txt_apple,'Pole_x','Pole_y');
+Hand.pole_y    = raw_apple(:,M.pole(2));
+Hand.pole_x    = raw_apple(:,M.pole(1));
 end
 
 function action = search_action(Hand,apple)
@@ -147,12 +153,18 @@ for j=1:apple_num
     end
     id_action (j,3) = time_window(1)+ apple_end-1; % apple stop time
     apple_disappear = find(isnan(apple_window),1,'first');% 
-    if apple_disappear-stop_loc<20
-        apple_disappear = stop_loc+500;% sometimes the data make the disappear time close to the stoploc
-        if apple_disappear>
-        end
+    if isempty(apple_disappear)
+        apple_disappear = stop_loc+100;
     end
-    id_action (j,4) = time_window(1)+ apple_disappear-2; % apple disappear time
+    if apple_disappear-stop_loc<20
+        apple_disappear = stop_loc+100;% sometimes the data make the disappear time close to the stoploc   
+    end
+    if time_window(1)+ apple_disappear>length(apple_x)
+       id_action (j,4) = length(apple_x)-10;
+    else
+       id_action (j,4)  = time_window(1)+ apple_disappear-2;% apple disappear time  
+    end
+    
     if apple_x(id_action(j,4))>mostposition+8||...
        apple_y(id_action(j,4))>apple_y(id_action(j,3))+6
 %        apple_y(id_action(j,4))<apple_y(id_action(j,3))-6          
@@ -203,8 +215,11 @@ function apple = apple_trace(Hand)
 apple_x = Hand.apple_x;
 apple_y = Hand.apple_y;
 apple_x(apple_x<Hand.edge_x) = nan;
-apple_y(apple_x<Hand.edge_x) = nan;
-apple_x(apple_x>340)         = nan; % 340/350 is the board of the glass
+apple_x(apple_x>350)         = nan; % 340/350 is the board of the glass
+% apple_x(apple_x>Hand.pole_x) = nan;
+% apple_x(apple_y>Hand.pole_y) = nan;
+apple_y(isnan(apple_x))      = nan;
+
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
 diff_apple  = [nan;diff_apple];
