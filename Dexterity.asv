@@ -9,7 +9,7 @@ monkey_name = {'2','76','132','43','137','187'};
 % raw_apple = table2array(readtable(filename_raw_apple));
 
 
-list        = ls([char(monkey_name(1)) '-*-hand.csv']);
+list        = ls([char(monkey_name(3)) '-*-hand.csv']);
 length_file = size(list);
 length_file = length_file(1); 
 RT = [];
@@ -35,8 +35,10 @@ slitE_rate_mean = mean(slitE_rate);
 wandE_rate_mean = mean(wandE_rate);
 grisE_rate_mean = mean(grisE_rate);
 filename = [F.filename_raw_hand(1:end-9) '.xlsx'];
-title    ={'E_total','E_slithit','E_wand','E_grisp','RT'};
-lswrite(filename,A,sheet,erro_rate_mean;slitE_rate_mean;wandE_rate_mean;grisE_rate_mean;)
+title    ={'Monkey','Month','E_total','E_slithit','E_wand','E_grisp','RT';'#2',...
+    'May',erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean};
+% data =[erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean];
+xlswrite(filename,title);
 
 
 function R = singlefile(F)
@@ -87,7 +89,7 @@ end
 
 function Hand = read_csv(Txt_hand,raw_hand,raw_apple,filename_raw_hand,Txt_apple)
 threshold_hand  = 0.00001;
-threshold_apple = 0.1;
+threshold_apple = 0.2;
 
 Hand.tip1       = findcolum(Txt_hand,'tip1_x','tip1_y','tip1_p');
 Hand.PIP1       = findcolum(Txt_hand,'PIP1_x','PIP1_y','PIP1_p');
@@ -114,17 +116,18 @@ Hand.edge_x                 = (mean(raw_apple(:,Hand.slot(1)))+mean(raw_apple(:,
 Hand.apple                  = findcolum(Txt_apple,'Apple_x','Apple_y','Apple_p');
 [Hand.apple_x,Hand.apple_y] = readout(Hand.apple,threshold_apple,raw_apple);
 Hand.filename_raw_hand      = filename_raw_hand;
-M.pole         = findcolum(Txt_apple,'Pole_x','Pole_y');
-Hand.pole_y    = raw_apple(:,M.pole(2));
-Hand.pole_x    = raw_apple(:,M.pole(1));
+M.pole                      = findcolum(Txt_apple,'Pole_x','Pole_y','Pole_p');
+[Hand.pole_x,Hand.pole_y]   = readout(M.pole,threshold_apple,raw_apple);
+% Hand.pole_y    = raw_apple(:,M.pole(2));
+% Hand.pole_x    = raw_apple(:,M.pole(1));
 end
 
 function action = search_action(Hand,apple)
 apple_start   = apple.apple_start;
 diff_apple    = apple.diff_apple;
 mostposition  = apple.mostposition;
-apple_x       = Hand.apple_x;
-apple_y       = Hand.apple_y;
+apple_x       = apple.apple_x;
+apple_y       = apple.apple_y;
 apple_num     = length(apple_start);
 invalid_id    = [];
 grab_id       = [];
@@ -177,6 +180,8 @@ for j=1:apple_num
     id_action(j,5) = grab_status;
 %     fprintf(fid,'%6d %6d %6d %6d %6d\n',apple_start_end_disappear(j,:));
 end  
+plot(apple_x(id_action(:,3)),id_action(:,3),'go');
+plot(apple_x(id_action(:,3)),id_action(:,3),'b*');
 invalid_id = unique(invalid_id);
 % id_action(invalid_id ,:) = [];
 % Step6:find out the errotypeI, which is grab the outside of the slitwant_count = 0; success_count = 0;
@@ -214,11 +219,16 @@ end
 function apple = apple_trace(Hand)
 apple_x = Hand.apple_x;
 apple_y = Hand.apple_y;
+pole_x  = Hand.pole_x;
+pole_y  = Hand.pole_y;
 apple_x(apple_x<Hand.edge_x) = nan;
 apple_x(apple_x>350)         = nan; % 340/350 is the board of the glass
 % apple_x(apple_x>Hand.pole_x) = nan;
 % apple_x(apple_y>Hand.pole_y) = nan;
 apple_y(isnan(apple_x))      = nan;
+apple_y(apple_y>pole_y+10)   = nan;
+apple_y(apple_y<pole_y-10)   = nan;
+apple_x(isnan(apple_y))      = nan;
 
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
@@ -239,6 +249,7 @@ for i=1:length(locs_sign)-2
        apple_x(locs_sign(i)-2:locs_sign(i)+2)=nan;
     end 
 end
+figure
 plot(apple_x,nframes,'color','c')
 
 %Step4: when the certain applecoming out,
@@ -270,14 +281,17 @@ end
 hold on 
 plot(apple_x(apple_start),apple_start,'ro');
 title(Hand.filename_raw_hand(1:end-8));
-hold off
+
+% figure
+% plot(pole_x,nframes,'color','c')
 % fid=fopen([filename_raw_hand(1:end-4),'.txt'],'w');
 % fprintf(fid,'%s %s %s %s %s\n','trialNo','appleStart','appleEnd','appleDisappear','grab/nograb');
-% Step 5: find out the no-grab trial and delete it ,make it related to the apple
 % trial definition: a new/old apple come out 
 apple.apple_start  = apple_start;
 apple.diff_apple   = diff_apple;
 apple.mostposition = mostposition;
+apple.apple_x      = apple_x;
+apple.apple_y      = apple_y;
 end 
 
 function erroGrisp   = precisGrispError(id_action,Hand)
@@ -304,7 +318,7 @@ function erroGrisp   = precisGrispError(id_action,Hand)
  apple_x             = Hand.apple_x;
  apple_y             = Hand.apple_y;
  for i=1:trials
-    time_window      = id_action(i,8):id_action(i,8)+3;
+    time_window      = id_action(i,8)-2:id_action(i,8)+3;
     indexTip_window  = [index_tip_x(time_window),index_tip_y(time_window)];
     indexDip_window  = [index_dip_x(time_window),index_dip_y(time_window)];
     indexPip_window  = [index_pip_x(time_window),index_pip_y(time_window)];
@@ -338,16 +352,17 @@ function erroGrisp   = precisGrispError(id_action,Hand)
         cc = norm(base_window(j,:)-indexMcp_window(j,:));
         theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);                   
     end
-%     figure
-%     subplot(211)
-%     plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
-%         'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
-%         'm-+')
-%     legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
-%     subplot(212)
-%     plot(time_window,theta,'r-o')
-%     title([filename_raw_hand(1:end-4)  ' trial #  ' num2str(id_action(i,1)) ' degree of »¢¿Ú(in pixle)'])
-    if d_indtip2thutip(:)>30|theta(:)>30
+    figure
+    subplot(211)
+    plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
+        'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
+        'm-+')
+    legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
+    title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'joints distance to apple(in pixle)'])
+    subplot(212)
+    plot(time_window,theta,'r-o')
+    title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'angle bet thumb and the index(in degree)'])
+    if mean(d_indtip2thutip(:)>30)||mean(theta(:))>30
         erroGrisp_num     = erroGrisp_num+1;
         erroGrisp_trialID = [erroGrisp_trialID,id_action(i,1)];
     end
