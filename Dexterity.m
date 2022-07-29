@@ -65,7 +65,8 @@ R.applenum    = length(apple.apple_start);
 R.erroGrispID = erroGrisp.ID';
 R.errorSlitID = errorSlitHit.ID';
 R.erroWandeID = erroWander.ID';
-R.invalidID   = action.invalid;
+R.invalidID   = action.invalid';
+R.dropid      = action.dropid';
 R.errorID     = unique ([R.erroGrispID;R.errorSlitID;R.erroWandeID]);
 
 R.RT_all      = round((action.action(:,7)-action.action(:,6))*1000/60);
@@ -74,14 +75,15 @@ R.RT_error    = round((action.action(R.errorID,7)-action.action(R.errorID,6))*10
 id_act_correct= delete_errotrials(action.action,R.errorID);
 R.correID     = id_act_correct(:,1);
 R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);% in ms
-invalid_num    = length(action.invalid);
-R.erro_num     = length(R.errorID);
-R.slitE_rate   = errorSlitHit.num/(R.applenum-invalid_num);
-R.wandE_rate   = erroWander.num/(R.applenum-invalid_num);
-R.grisE_rate   = erroGrisp.num/(R.applenum-invalid_num);
-R.erro_rate    = R.erro_num/(R.applenum-invalid_num);
-R.id_action    = action.action;
-R.savefile     = erroGrisp.filename;
+% invalid_num   = length(action.invalid);
+R.erro_num    = length(R.errorID);
+R.slitE_rate  = errorSlitHit.num/(R.applenum);
+R.wandE_rate  = erroWander.num/(R.applenum);
+R.grisE_rate  = erroGrisp.num/(R.applenum);
+R.erro_rate   = R.erro_num/(R.applenum);
+R.drop_rate   = length(R.dropid)/R.applenum;
+R.id_action   = action.action;
+R.savefile     = erroGrisp.filename(1:end-5);
 save([R.savefile '.mat'],'R');
 end
 
@@ -124,80 +126,91 @@ end
 
 function action = search_action(Hand,apple)
 apple_start   = apple.apple_start;
-diff_apple    = apple.diff_apple;
-mostposition  = apple.mostposition;
+% diff_apple    = apple.diff_apple;
 apple_x       = apple.apple_x;
 apple_y       = apple.apple_y;
+pole_y        = mean(Hand.pole_y,'omitnan');
+diff_apple    = diff(apple_x);
+diff_apple    = [nan;diff_apple];
+diff_apple    = abs(diff_apple);
 apple_num     = length(apple_start);
 invalid_id    = [];
-grab_id       = [];
-id_action     = zeros(apple_num,8);
+drop_id       = [];
+id_action     = zeros(apple_num,9);
 for j=1:apple_num
     if j<apple_num
-        time_window = [apple_start(j):apple_start(j+1)];
+        time_window = [apple_start(j):apple_start(j+1)-1];
     else 
         time_window = [apple_start(j):length(apple_x)];% the last apple show up and wait for 20 seconds
     end
-    apple_window       = apple_x(time_window);
-%     index_tip_x_window = Hand.index_tip_x(time_window);
-%     index_tip_y_window = Hand.index_tip_y(time_window);
-%     figure    
-%     plot(index_tip_x_window ,time_window,'r')
-%     hold on 
-%     plot(apple_window,time_window,'b-')
-%     title(num2str(i));
-    id_action (j,1) = j ; % trial
+    apple_window    = apple_x(time_window);
+    j
+    id_action (j,1) = j; % trial
     id_action (j,2) = apple_start(j); % apple come out time
-    stop_loc = find(diff_apple(time_window)>-0.05,1,'first'); % -0.05
+    stop_loc = find(diff_apple(time_window)<0.5,1,'first'); % -0.05
     if stop_loc
        apple_end = stop_loc;
     else
-       apple_end = find(diff_apple(time_window)==-min(abs(diff_apple(time_window))));
+       apple_end = find(diff_apple(time_window)==min(abs(diff_apple(time_window))));
     end
     id_action (j,3) = time_window(1)+ apple_end-1; % apple stop time
     apple_disappear = find(isnan(apple_window),1,'first');% 
     if isempty(apple_disappear)
         apple_disappear = stop_loc+100;
     end
-    if apple_disappear-stop_loc<20
-        apple_disappear = stop_loc+100;% sometimes the data make the disappear time close to the stoploc   
-    end
+%     if apple_disappear-stop_loc<20
+%         apple_disappear = stop_loc+100;% sometimes the data make the disappear time close to the stoploc   
+%     end
+%     apple_disappear = find(diff_pole(time_window)>0.1,1,'first');% 
+    
     if time_window(1)+ apple_disappear>length(apple_x)
        id_action (j,4) = length(apple_x)-10;
     else
        id_action (j,4)  = time_window(1)+ apple_disappear-2;% apple disappear time  
     end
-    
-    if apple_x(id_action(j,4))>mostposition+8||...
-       apple_y(id_action(j,4))>apple_y(id_action(j,3))+6
-%        apple_y(id_action(j,4))<apple_y(id_action(j,3))-6          
-       invalid_id          = [invalid_id;j];
-       grab_status         = 0;
+    disappeartrace_y   = Hand.apple_y(id_action (j,4):time_window(end));
+    locs               = find(disappeartrace_y>pole_y+10)
+    if length(locs)>3
+       drop_id         = [drop_id;j];
+       drop_status     = 0;
     else
-        grab_id            = [grab_id,j];
-        grab_status        = 1;
+       drop_status     = 1;
     end
-    id_action(j,5) = grab_status;
+    id_action(j,9) = drop_status;
 %     fprintf(fid,'%6d %6d %6d %6d %6d\n',apple_start_end_disappear(j,:));
 end  
 plot(apple_x(id_action(:,3)),id_action(:,3),'go');
-plot(apple_x(id_action(:,4)),id_action(:,4),'b*');
-
+plot(apple_x(id_action(:,4)),id_action(:,4),'b*')
 hold off
-figure
-plot(apple_x(id_action(:,3)),id_action(:,3),'go');
-hold on
-plot(apple_x(id_action(:,4)),id_action(:,4),'b*');
-figure
-plot(apple_y(id_action(:,3)),id_action(:,3),'go');
-hold on
-plot(apple_y(id_action(:,4)),id_action(:,4),'b*');
+stop_loc      = id_action(:,3);
+stop_x_mean   = mean(apple_x(stop_loc));
+stop_y_mean   = mean(apple_y(stop_loc));
 
-invalid_id = unique(invalid_id);
-% id_action(invalid_id ,:) = [];
+window           = 8;% in pixle
+for j=1:apple_num
+    %if stop position is left or right 2 sigma than the mean,define it as invalid 
+    m=id_action(j,3);
+    stop_x = mean(apple_x(m-2:m+2));
+    stop_y = mean(apple_y(id_action(j,3)-2:id_action(j,3)+2));
+    if stop_x>stop_x_mean+window ||...
+       stop_x<stop_x_mean-window ||...
+       stop_y>stop_y_mean+window ||...
+       stop_y<stop_y_mean-window      
+     
+       invalid_id          = [invalid_id;j];
+       invalid_status      = 0;
+    else
+       invalid_status     = 1;
+    end
+       id_action(j,5) = invalid_status;
+   
+end
+
+% invalid_id = unique(invalid_id);
 % Step6:find out the errotypeI, which is grab the outside of the slitwant_count = 0; success_count = 0;
 fwd_time       = []; 
 back_time      = [];
+% [id_action]    = delete_errotrials(id_action,invalid_id);
 trials         = length(id_action(:,1));
 for i= 1:trials
         for j=id_action(i,2):id_action(i,4)% from the show up time to apple_disappear_time(i)  
@@ -225,6 +238,7 @@ for i= 1:trials
 end
 action.action  = id_action;
 action.invalid = invalid_id;
+action.dropid  = drop_id ;
 end
 
 function apple = apple_trace(Hand)
@@ -363,16 +377,16 @@ function erroGrisp   = precisGrispError(id_action,Hand)
         cc = norm(base_window(j,:)-indexMcp_window(j,:));
         theta(j)= acosd((aa^2+cc^2-bb^2)/2/aa/cc);                   
     end
-    figure
-    subplot(211)
-    plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
-        'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
-        'm-+')
-    legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
-    title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'joints distance to apple(in pixle)'])
-    subplot(212)
-    plot(time_window,theta,'r-o')
-    title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'angle bet thumb and the index(in degree)'])
+%     figure
+%     subplot(211)
+%     plot(time_window,d_indextip2apple,'r-o',time_window,d_indexdip2apple,'g-*',time_window,d_indexpip2apple,...
+%         'b-s',time_window,d_thumbtip2apple,'k-^',time_window,d_thumbpip2apple,'y-v',time_window,d_indtip2thutip,...
+%         'm-+')
+%     legend('indextip2apple','indexdip2apple','indexpip2apple','thumbtip2apple','thumbpip2apple','indtip2thutip')
+%     title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'joints distance to apple(in pixle)'])
+%     subplot(212)
+%     plot(time_window,theta,'r-o')
+%     title([filename_raw_hand(1:end-9)  ' trial #  ' num2str(id_action(i,1)) 'angle bet thumb and the index(in degree)'])
     if mean(d_indtip2thutip(:)>30)||mean(theta(:))>30
         erroGrisp_num     = erroGrisp_num+1;
         erroGrisp_trialID = [erroGrisp_trialID,id_action(i,1)];
