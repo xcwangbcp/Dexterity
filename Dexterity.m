@@ -24,21 +24,35 @@ for i= 1:length_file
     if R.erro_rate>1
         R.erro_rate=1;
     end
-    erro_rate(i)  = R.erro_rate;
-    slitE_rate(i) = R.slitE_rate;
-    wandE_rate(i) = R.wandE_rate;
-    grisE_rate(i) = R.grisE_rate;  
+    erro_rate(i)    = R.erro_rate;
+    slitE_rate(i)   = R.slitE_rate;
+    wandE_rate(i)   = R.wandE_rate;
+    grisE_rate(i)   = R.grisE_rate; 
+    drop_rate(i)    = R.drop_rate;
+    a2e_distance(i) = R.a2e_distance;
+    
+    
 end
-erro_rate_mean  = mean(erro_rate);
-RT_mean         = mean(RT);
-slitE_rate_mean = mean(slitE_rate);
-wandE_rate_mean = mean(wandE_rate);
-grisE_rate_mean = mean(grisE_rate);
-filename = [F.filename_raw_hand(1:end-9) '.xlsx'];
-title    ={'Monkey','Month','E_total','E_slithit','E_wand','E_grisp','RT';'#2',...
-    'May',erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean};
-% data =[erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean];
-xlswrite(filename,title);
+erro_rate_mean  = round(mean(erro_rate),2);
+RT_mean         = round(mean(RT),2);
+slitE_rate_mean = round(mean(slitE_rate),2);
+wandE_rate_mean = round(mean(wandE_rate),2);
+grisE_rate_mean = round(mean(grisE_rate),2);
+drop_rate_mean  = round(mean(drop_rate),2);
+a2e_distance_mean=round(mean(a2e_distance),2);
+filename         = [F.filename_raw_hand(1:end-9) '.xlsx'];
+monkey           = ['#' filename(1:3)];
+m_d              = filename(4:9);
+varNames         = {'ErrorType','Session'};
+ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime';'distance'};
+round(mean(RT),2);
+% array    ={'Monkey','M/D','E_total','E_slithit','E_wand','E_grisp','RT','E_drop','D_apple2edge';...
+%     monkey, m_d,round(erro_rate(1),2),round(slitE_rate(1),2),round(wandE_rate(1),2),...
+%     round(grisE_rate(1),2),round(RT(1),2),round(drop_rate(1),2),round(a2e_distance(1),2);...
+%     monkey, m_d,erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean,...
+%     drop_rate_mean,a2e_distance_mean};
+% % data =[erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean];
+% xlswrite(filename,array);
 
 
 function R = singlefile(F)
@@ -68,22 +82,24 @@ R.erroWandeID = erroWander.ID';
 R.invalidID   = action.invalid';
 R.dropid      = action.dropid';
 R.errorID     = unique ([R.erroGrispID;R.errorSlitID;R.erroWandeID]);
-
-R.RT_all      = round((action.action(:,7)-action.action(:,6))*1000/60);
+R.RT_valid    = (action.action(R.validID,7)-action.action(R.validID,6))*1000/60;
+R.RT_all      = (action.action(:,7)-action.action(:,6))*1000/60;
 % [locs,~]      = find(bsxfun(@eq,action.action(:,1),R.errorID));
-R.RT_error    = round((action.action(R.errorID,7)-action.action(R.errorID,6))*1000/60);
+R.RT_error    = (action.action(R.errorID,7)-action.action(R.errorID,6))*1000/60;
+
 id_act_correct= delete_errotrials(action.action,R.errorID);
 R.correID     = id_act_correct(:,1);
 R.RT_correct  = round((id_act_correct(:,7)-id_act_correct(:,6))*1000/60);% in ms
-% invalid_num   = length(action.invalid);
+valid_trials  = R.applenum-length(action.invalid);
 R.erro_num    = length(R.errorID);
-R.slitE_rate  = errorSlitHit.num/(R.applenum);
-R.wandE_rate  = erroWander.num/(R.applenum);
-R.grisE_rate  = erroGrisp.num/(R.applenum);
-R.erro_rate   = R.erro_num/(R.applenum);
-R.drop_rate   = length(R.dropid)/R.applenum;
+R.slitE_rate  = errorSlitHit.num/valid_trials ;
+R.wandE_rate  = erroWander.num/valid_trials ;
+R.grisE_rate  = erroGrisp.num/valid_trials ;
+R.erro_rate   = R.erro_num/valid_trials ;
+R.drop_rate   = length(R.dropid)/valid_trials;
 R.id_action   = action.action;
-R.savefile     = erroGrisp.filename(1:end-5);
+R.a2e_distance= action.distance;    
+R.savefile    = erroGrisp.filename(1:end-5);
 save([R.savefile '.mat'],'R');
 end
 
@@ -130,6 +146,7 @@ apple_start   = apple.apple_start;
 apple_x       = apple.apple_x;
 apple_y       = apple.apple_y;
 pole_y        = mean(Hand.pole_y,'omitnan');
+edge_x        = Hand.edge_x;
 diff_apple    = diff(apple_x);
 diff_apple    = [nan;diff_apple];
 diff_apple    = abs(diff_apple);
@@ -169,12 +186,12 @@ for j=1:apple_num
        id_action (j,4)  = time_window(1)+ apple_disappear-2;% apple disappear time  
     end
     disappeartrace_y   = Hand.apple_y(id_action (j,4):time_window(end));
-    locs               = find(disappeartrace_y>pole_y+10)
+    locs               = find(disappeartrace_y>pole_y+10);
     if length(locs)>3
        drop_id         = [drop_id;j];
-       drop_status     = 0;
-    else
        drop_status     = 1;
+    else
+       drop_status     = 0;
     end
     id_action(j,9) = drop_status;
 %     fprintf(fid,'%6d %6d %6d %6d %6d\n',apple_start_end_disappear(j,:));
@@ -189,7 +206,7 @@ stop_y_mean   = mean(apple_y(stop_loc));
 window           = 8;% in pixle
 for j=1:apple_num
     %if stop position is left or right 2 sigma than the mean,define it as invalid 
-    m=id_action(j,3);
+    m      = id_action(j,3);
     stop_x = mean(apple_x(m-2:m+2));
     stop_y = mean(apple_y(id_action(j,3)-2:id_action(j,3)+2));
     if stop_x>stop_x_mean+window ||...
@@ -198,12 +215,11 @@ for j=1:apple_num
        stop_y<stop_y_mean-window      
      
        invalid_id          = [invalid_id;j];
-       invalid_status      = 0;
+       invalid_status      = 1;
     else
-       invalid_status     = 1;
+       invalid_status      = 0;
     end
-       id_action(j,5) = invalid_status;
-   
+       id_action(j,5) = invalid_status;  
 end
 
 % invalid_id = unique(invalid_id);
@@ -236,15 +252,15 @@ for i= 1:trials
          [~,touch_time ]  = max(index_Y );
          id_action(i,8)   = touch_time+fwd_time(end);
 end
-action.action  = id_action;
-action.invalid = invalid_id;
-action.dropid  = drop_id ;
+action.action   = id_action;
+action.invalid  = invalid_id;
+action.dropid   = drop_id ;
+action.distance = stop_x_mean-edge_x;
 end
 
 function apple = apple_trace(Hand)
 apple_x = Hand.apple_x;
 apple_y = Hand.apple_y;
-pole_x  = Hand.pole_x;
 pole_y  = Hand.pole_y;
 apple_x(apple_x<Hand.edge_x) = nan;
 apple_x(apple_x>350)         = nan; % 340/350 is the board of the glass
