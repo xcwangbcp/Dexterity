@@ -8,11 +8,17 @@ monkey_name = {'2','76','132','43','137','187'};
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
 
-
-list        = ls([char(monkey_name(2)) '-*-hand.csv']);
+monkey_num = length(monkey_name );
+p2mm       = 3; %1mm=3pixles
+for j= 1:monkey_num
+list        = ls([char(monkey_name(j)) '-*-hand.csv']);
 length_file = size(list);
 length_file = length_file(1); 
-
+slitE_rate  = [];
+wandE_rate  = [];
+drop_rate   = [];
+RT_valid    = [];
+a2e_distance= [];
 for i= 1:length_file
 %     RT_valid = [];
     F.filename_raw_hand         = list(i,:);
@@ -28,15 +34,15 @@ for i= 1:length_file
     wandE_rate(i)   = R.wandE_rate;
 %     grisE_rate(i)   = R.grisE_rate; 
     drop_rate(i)    = R.drop_rate;
-    RT_valid(i)     = mean(R.RT_valid,'omitnan');
-    a2e_distance(i) = R.a2e_distance;
+    RT_valid(i)     = R.RT_vali_mean;
+    a2e_distance(i) = R.a2e_distance/p2mm;
 end
 
 filename         = [F.filename_raw_hand(1:end-9) '.xlsx'];
 % monkey           = ['#' filename(1:3)];
 % m_d              = filename(4:9);
 varNames         = {'ErrorType','Session'};
-ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime';'distance'};
+ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime:ms';'distance(Apple-Edge:mm)'};
 
 T = table(ErrorType,[round(slitE_rate,2);round(wandE_rate,2);round(drop_rate,2);...
 round(RT_valid,2);round(a2e_distance,2)],'VariableNames',varNames);
@@ -49,7 +55,7 @@ writetable(T,filename)
 %     drop_rate_mean,a2e_distance_mean};
 % % data =[erro_rate_mean,slitE_rate_mean,wandE_rate_mean,grisE_rate_mean,RT_mean];
 % xlswrite(filename,array);
-
+end
 
 function R = singlefile(F)
 
@@ -61,10 +67,15 @@ action = search_action(Hand,apple);
 % Step 9  find out the 4th type error, which is determined by the distance
 % between the apple and the joints of index and thumb
 % erroGrisp_trialID       = intersect(erroGrisp_trialID,invalid_id);
+invalidID   = action.invalid;
+dropID      = action.dropid;
+sum_D_V     = unique([invalidID;dropID]);%;R.erroWandeID])
+valid_action     = delete_errotrials(action.action,sum_D_V);
+% take out the invalid trials and 
+errorSlitHit = slitHitError(valid_action,Hand);
+erroWander   = wanderError(valid_action,Hand);
+erroGrisp    = precisGrispError(valid_action,Hand);
 
-erroGrisp    = precisGrispError(action.action,Hand);
-errorSlitHit = slitHitError(action.action,Hand);
-erroWander   = wanderError(action.action,Hand);
  R           = savewhat(apple,erroGrisp,errorSlitHit,erroWander,action);
 end
 
@@ -73,17 +84,19 @@ function R    = savewhat(apple,erroGrisp,errorSlitHit,erroWander,action)
 
 R.applenum    = length(apple.apple_start);
 % R.erroGrispID = erroGrisp.ID';
+R.invalidID   = action.invalid;
+R.dropID      = action.dropid;
+R.sum_D_V     = unique([R.invalidID;R.dropID]);%;R.erroWandeID])
+id_action     = delete_errotrials(action.action,R.sum_D_V);
+R.RT_valid    = (id_action(:,7)-id_action(:,6))*1000/60;% take out the invalid and droptrials
+R.RT_vali_mean= mean(R.RT_valid);   
+
 R.errorSlitID = errorSlitHit.ID'; 
 R.erroWandeID = erroWander.ID';
 R.errorID     = unique([R.erroWandeID;R.errorSlitID]);%;;R.erroGrispID])
 R.RT_erro     = (action.action(R.errorID ,7)-action.action(R.errorID ,6))*1000/60;
 R.RT_all      = (action.action(:,7)-action.action(:,6))*1000/60;% include all the trials
 
-R.invalidID   = action.invalid;
-R.dropID      = action.dropid;
-R.sum_D_V     = unique([R.invalidID;R.dropID]);%;R.erroWandeID])
-[id_action]   = delete_errotrials(action.action,R.sum_D_V);
-R.RT_valid    = (id_action(:,7)-id_action(:,6))*1000/60;% take out the invalid and droptrials
 
 % [locs,~]      = find(bsxfun(@eq,action.action(:,1),R.dropID));
 id_act_correct= delete_errotrials(action.action,R.errorID);
@@ -96,7 +109,7 @@ R.slitE_rate  = errorSlitHit.num/valid_trials ;
 R.wandE_rate  = erroWander.num/valid_trials ;
 R.grisE_rate  = erroGrisp.num/valid_trials ;
 R.erro_rate   = R.erro_num/valid_trials ;
-R.drop_rate   = length(R.dropID)/valid_trials;
+R.drop_rate   = length(R.dropID)/R.applenum ;
 R.id_action   = action.action;
 R.a2e_distance= action.distance;    
 R.savefile    = erroGrisp.filename(1:end-5);
@@ -166,11 +179,11 @@ for j=1:apple_num
     id_action (j,1) = j; % trial
     id_action (j,2) = apple_start(j); % apple come out time
 %     diff_apple_window=diff(time_window);
-    [stop_loc]      = continu_count_num(diff_apple(time_window),0.1,5);
+    [stop_loc]      = continu_count_num(diff_apple(time_window),0.5,3);
     if stop_loc
         apple_end = stop_loc(1);
     else
-        stop_loc  = find(diff_apple(time_window)<0.1,1,'first'); % -0.05
+        stop_loc  = find(diff_apple(time_window)<0.2,1,'first'); % -0.05
         if stop_loc
             apple_end = stop_loc;
         else
@@ -507,7 +520,6 @@ end
 function errorSlitHit = slitHitError(id_action,Hand)
 errorSlitHit_num     = 0;
 errorSlitHit_trialID = [];
-
 trials               = length(id_action(:,1));
 filename_raw_hand    = Hand.filename_raw_hand;
 index_tip_x          = Hand.index_tip_x;
@@ -548,7 +560,7 @@ function [x,y] = readout(M,threshold,raw_hand)
     y = movmean(y,5);
 end
 
-function [id_action]=delete_errotrials(id_action,erroI_trialID)
+function id_action = delete_errotrials(id_action,erroI_trialID)
         A=zeros(length(erroI_trialID),1);
         for i= 1:length(erroI_trialID)
             A(i)=find(id_action(:,1)==erroI_trialID(i));
