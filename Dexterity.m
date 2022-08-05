@@ -179,9 +179,15 @@ for j=1:apple_num
     id_action (j,1) = j; % trial
     id_action (j,2) = apple_start(j); % apple come out time
 %     diff_apple_window=diff(time_window);
-    [stop_loc]      = continu_count_num(diff_apple(time_window),0.5,3);
+    stop_loc       = continu_count_num(diff_apple(time_window),0.5,3);
+    n=1;
     if stop_loc
         apple_end = stop_loc(1);
+        while apple_x(time_window(1)+ apple_end-1)>230&&n<=length(stop_loc)
+           n=n+1;
+           apple_end = stop_loc(n);
+           break
+        end
     else
         stop_loc  = find(diff_apple(time_window)<0.2,1,'first'); % -0.05
         if stop_loc
@@ -224,8 +230,7 @@ hold off
 stop_loc      = id_action(:,3);
 stop_x_mean   = mean(apple_x(stop_loc));
 stop_y_mean   = mean(apple_y(stop_loc));
-
-window           = 8;% in pixle
+window        = 15;% in pixle
 for j=1:apple_num
     %if stop position is left or right 2 sigma than the mean,define it as invalid 
     m      = id_action(j,3);
@@ -280,7 +285,7 @@ action.dropid   = drop_id ;
 action.distance = stop_x_mean-edge_x;
 end
 
-function  [stop_loc]=continu_count_num(diff_apple_window,threshhold,count)
+function  stop_loc = continu_count_num(diff_apple_window,threshhold,count)
          A               = diff_apple_window;
          A(A<threshhold) = 1;
          B               = movsum(A,count);

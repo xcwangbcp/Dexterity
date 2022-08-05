@@ -9,7 +9,7 @@ monkey_name = {'2','76','132','43','137','187'};
 % raw_apple = table2array(readtable(filename_raw_apple));
 
 monkey_num = length(monkey_name );
-p2mm       = 
+p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
 list        = ls([char(monkey_name(j)) '-*-hand.csv']);
 length_file = size(list);
@@ -35,14 +35,14 @@ for i= 1:length_file
 %     grisE_rate(i)   = R.grisE_rate; 
     drop_rate(i)    = R.drop_rate;
     RT_valid(i)     = R.RT_vali_mean;
-    a2e_distance(i) = R.a2e_distance;
+    a2e_distance(i) = R.a2e_distance/p2mm;
 end
 
 filename         = [F.filename_raw_hand(1:end-9) '.xlsx'];
 % monkey           = ['#' filename(1:3)];
 % m_d              = filename(4:9);
 varNames         = {'ErrorType','Session'};
-ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime';'distance(Apple-Edge)'};
+ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime:ms';'distance(Apple-Edge:mm)'};
 
 T = table(ErrorType,[round(slitE_rate,2);round(wandE_rate,2);round(drop_rate,2);...
 round(RT_valid,2);round(a2e_distance,2)],'VariableNames',varNames);
@@ -180,8 +180,13 @@ for j=1:apple_num
     id_action (j,2) = apple_start(j); % apple come out time
 %     diff_apple_window=diff(time_window);
     [stop_loc]      = continu_count_num(diff_apple(time_window),0.5,3);
+    n=1;
     if stop_loc
         apple_end = stop_loc(1);
+        while apple(time_window(1)+ apple_end-1)>230
+            
+            break
+        end
     else
         stop_loc  = find(diff_apple(time_window)<0.2,1,'first'); % -0.05
         if stop_loc
@@ -224,8 +229,7 @@ hold off
 stop_loc      = id_action(:,3);
 stop_x_mean   = mean(apple_x(stop_loc));
 stop_y_mean   = mean(apple_y(stop_loc));
-
-window           = 8;% in pixle
+window        = 15;% in pixle
 for j=1:apple_num
     %if stop position is left or right 2 sigma than the mean,define it as invalid 
     m      = id_action(j,3);
