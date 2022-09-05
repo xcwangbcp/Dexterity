@@ -1,13 +1,13 @@
 close all
 clear 
-monkey_name = {'2','76','132','43','137','187'};
+monkey_name = {'2','43','44','76','132','137','159'};
 %Step1  read the data into the workspace
 % [F.filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
 % [F.raw_hand,F.Txt_hand,~]        = xlsread([pathname,F.filename_raw_hand]);
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-
+monkey_name={'44'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -169,6 +169,7 @@ apple_num     = length(apple_start);
 invalid_id    = [];
 drop_id       = [];
 id_action     = zeros(apple_num,9);
+mostpositon   =apple.mostposition;
 for j=1:apple_num
     if j<apple_num
         time_window = [apple_start(j):apple_start(j+1)-1];
@@ -181,9 +182,9 @@ for j=1:apple_num
 %     diff_apple_window=diff(time_window);
     stop_loc       = continu_count_num(diff_apple(time_window),0.5,3);
     n=1;
-    if stop_loc
+    if length(stop_loc)>3
         apple_end = stop_loc(1);
-        while apple_x(time_window(1)+ apple_end-1)>230&&n<=length(stop_loc)
+        while apple_x(time_window(1)+ apple_end-1)>mostpositon+10&&n<=length(stop_loc)
            n=n+1;
            apple_end = stop_loc(n);
            break
@@ -199,7 +200,13 @@ for j=1:apple_num
    
     id_action (j,3) = time_window(1)+ apple_end-1; % apple stop time
     
-    apple_disappear = find(isnan(apple_window),1,'first');% 
+    disappear       = find(isnan(apple_window));% 
+    m=1;
+    apple_disappear = disappear(m);
+    while apple_disappear<apple_end
+          m=m+1;
+          apple_disappear = disappear(m);
+    end
     if isempty(apple_disappear)
         apple_disappear = stop_loc+100;
     end
@@ -274,6 +281,7 @@ for i= 1:trials
                 end
             end
         end
+        i
          id_action(i,6:7) = [fwd_time(end); back_time(end)];% pass the inde
          index_Y          = Hand.index_tip_y(fwd_time(end):back_time(end));
          [~,touch_time ]  = max(index_Y );
@@ -284,7 +292,7 @@ action.invalid  = invalid_id;
 action.dropid   = drop_id ;
 action.distance = stop_x_mean-edge_x;
 end
-
+% find out N=count number of apple coordinate smaller than the threshhold
 function  stop_loc = continu_count_num(diff_apple_window,threshhold,count)
          A               = diff_apple_window;
          A(A<threshhold) = 1;
