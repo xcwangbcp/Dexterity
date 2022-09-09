@@ -1,13 +1,13 @@
 close all
 clear 
-monkey_name = {'2','43','44','76','132','137','159'};
+monkey_name = {'2','25','43','44','60','70','76','132','133','137','159','187','195'};
 %Step1  read the data into the workspace
 % [F.filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
 % [F.raw_hand,F.Txt_hand,~]        = xlsread([pathname,F.filename_raw_hand]);
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'44'};
+monkey_name={'187'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -166,7 +166,6 @@ diff_apple    = diff(apple_x);
 diff_apple    = [nan;diff_apple];
 diff_apple    = abs(diff_apple);
 apple_num     = length(apple_start);
-invalid_id    = [];
 drop_id       = [];
 id_action     = zeros(apple_num,9);
 mostpositon   =apple.mostposition;
@@ -183,11 +182,10 @@ for j=1:apple_num
     stop_loc       = continu_count_num(diff_apple(time_window),0.5,3);
     n=1;
     if length(stop_loc)>3
-        apple_end = stop_loc(1);
-        while apple_x(time_window(1)+ apple_end-1)>mostpositon+10&&n<=length(stop_loc)
-           n=n+1;
+        apple_end = stop_loc(n);
+        while apple_x(time_window(1)+ apple_end-1)>230&&n<=length(stop_loc)-1 
+           n=n+1;  
            apple_end = stop_loc(n);
-           break
         end
     else
         stop_loc  = find(diff_apple(time_window)<0.2,1,'first'); % -0.05
@@ -199,30 +197,31 @@ for j=1:apple_num
     end 
    
     id_action (j,3) = time_window(1)+ apple_end-1; % apple stop time
-    
-    disappear       = find(isnan(apple_window));% 
+    disappear       = continu_count_nan(apple_window,12); % 12 cotinuous Nans
+%     disappear      = find(isnan(apple_window));% 
     m=1;
-    apple_disappear = disappear(m);
-    while apple_disappear<apple_end
+    if isempty(disappear)
+        apple_disappear = apple_end+200;
+    else
+        apple_disappear = disappear(m);
+        while apple_disappear<apple_end&&m<=length(disappear)-1
           m=m+1;
           apple_disappear = disappear(m);
-    end
-    if isempty(apple_disappear)
-        apple_disappear = stop_loc+100;
+        end
     end
 %     if apple_disappear-stop_loc<20
 %         apple_disappear = stop_loc+100;% sometimes the data make the disappear time close to the stoploc   
 %     end
 %     apple_disappear = find(diff_pole(time_window)>0.1,1,'first');% 
-    
     if time_window(1)+ apple_disappear>length(apple_x)
        id_action (j,4) = length(apple_x)-10;
     else
        id_action (j,4)  = time_window(1)+ apple_disappear-2;% apple disappear time  
     end
-    disappeartrace_y   = Hand.apple_y(id_action (j,4):time_window(end));
-    locs               = find(disappeartrace_y>pole_y+10);
-    if length(locs)>3
+    disappeartrace_y   = Hand.apple_y(id_action (j,2):time_window(end));
+    locs               = find(disappeartrace_y>pole_y+6);%45 pixels=1.5cm
+    diff_dropy         = diff(Hand.apple_y(locs));
+    if length(locs)>2&&mean(diff_dropy)>0.0001
        drop_id         = [drop_id;j];
        drop_status     = 1;
     else
@@ -237,7 +236,7 @@ hold off
 stop_loc      = id_action(:,3);
 stop_x_mean   = mean(apple_x(stop_loc));
 stop_y_mean   = mean(apple_y(stop_loc));
-window        = 15;% in pixle
+window        = 30;% in pixle 1cm
 for j=1:apple_num
     %if stop position is left or right 2 sigma than the mean,define it as invalid 
     m      = id_action(j,3);
@@ -247,8 +246,7 @@ for j=1:apple_num
        stop_x<stop_x_mean-window ||...
        stop_y>stop_y_mean+window ||...
        stop_y<stop_y_mean-window      
-     
-       invalid_id          = [invalid_id;j];
+   
        invalid_status      = 1;
     else
        invalid_status      = 0;
@@ -264,7 +262,7 @@ back_time      = [];
 trials         = length(id_action(:,1));
 for i= 1:trials
         for j=id_action(i,2):id_action(i,4)% from the show up time to apple_disappear_time(i)  
-            if Hand.index_tip_x(j-1,1)<Hand.index_tip_x(j,1)&&Hand.index_tip_x(j,1)<=Hand.edge_x...
+            if Hand.index_tip_x(j-1,1)<=Hand.edge_x...
                && Hand.index_tip_x(j+1,1)>=Hand.edge_x&&~isnan(apple_x(j))  %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)                 
                fwd_time  = [fwd_time,j];                              
                k = j;                                      
@@ -281,16 +279,27 @@ for i= 1:trials
                 end
             end
         end
-        i
-         id_action(i,6:7) = [fwd_time(end); back_time(end)];% pass the inde
-         index_Y          = Hand.index_tip_y(fwd_time(end):back_time(end));
-         [~,touch_time ]  = max(index_Y );
-         id_action(i,8)   = touch_time+fwd_time(end);
+        if isempty(fwd_time)||isempty(back_time)
+            id_action(i,6:7) = [nan,nan];
+            id_action(i,5)   = 1;%  sometimes the index never overpass the the edge
+        else
+             id_action(i,6:7) = [fwd_time(end); back_time(end)];% pass the inde
+            index_Y          = Hand.index_tip_y(fwd_time(end):back_time(end));
+            [~,touch_time ]  = max(index_Y );
+            id_action(i,8)   = touch_time+fwd_time(end);
+        end
+        
 end
 action.action   = id_action;
-action.invalid  = invalid_id;
+action.invalid  = id_action((id_action(:,5)==1),1);
 action.dropid   = drop_id ;
 action.distance = stop_x_mean-edge_x;
+end
+function disappear_loc  = continu_count_nan(apple_window,Num)
+         A              = apple_window;
+         A(isnan(A))    = 1;
+         B              = movsum(A,Num);
+         disappear_loc  = find(B==Num);
 end
 % find out N=count number of apple coordinate smaller than the threshhold
 function  stop_loc = continu_count_num(diff_apple_window,threshhold,count)
@@ -302,15 +311,15 @@ end
 function apple = apple_trace(Hand)
 apple_x = Hand.apple_x;
 apple_y = Hand.apple_y;
-pole_y  = Hand.pole_y;
-apple_x(apple_x<Hand.edge_x) = nan;
+% pole_y  = Hand.pole_y;
+apple_x(apple_x<Hand.edge_x-20) = nan;
 apple_x(apple_x>350)         = nan; % 340/350 is the board of the glass
 % apple_x(apple_x>Hand.pole_x) = nan;
 % apple_x(apple_y>Hand.pole_y) = nan;
-apple_y(isnan(apple_x))      = nan;
-apple_y(apple_y>pole_y+10)   = nan;
-apple_y(apple_y<pole_y-10)   = nan;
-apple_x(isnan(apple_y))      = nan;
+% apple_y(isnan(apple_x))      = nan;
+% apple_y(apple_y>pole_y+10)   = nan;
+% apple_y(apple_y<pole_y-10)   = nan;
+% apple_x(isnan(apple_y))      = nan;
 
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
@@ -537,6 +546,7 @@ trials               = length(id_action(:,1));
 filename_raw_hand    = Hand.filename_raw_hand;
 index_tip_x          = Hand.index_tip_x;
 Edge_x               = Hand.edge_x;
+
 for i=1:trials
     time_window  = id_action(i,6)-10:id_action(i,6)+10;
     v_index_x    = [false;diff(index_tip_x(time_window))];
@@ -573,12 +583,13 @@ function [x,y] = readout(M,threshold,raw_hand)
     y = movmean(y,5);
 end
 
-function id_action = delete_errotrials(id_action,erroI_trialID)
+function id_action_validtrial = delete_errotrials(id_action,erroI_trialID)
         A=zeros(length(erroI_trialID),1);
         for i= 1:length(erroI_trialID)
             A(i)=find(id_action(:,1)==erroI_trialID(i));
         end
-        id_action(A,:) = [];
+        id_action_validtrial=id_action;
+        id_action_validtrial(A,:) = [];
 end
 
 function [tmax,vmax,tmin,vmin] = extrem_num(p,f)
