@@ -1,13 +1,13 @@
 close all
 clear 
-monkey_name = {'2','25','43','44','60','70','76','132','133','137','159','187','195'};
+monkey_name = {'2','25','35','43','44','60','70','76','132','133','137','159','187','195'};
 %Step1  read the data into the workspace
 % [F.filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
 % [F.raw_hand,F.Txt_hand,~]        = xlsread([pathname,F.filename_raw_hand]);
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'187'};
+monkey_name={'2'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -38,7 +38,7 @@ for i= 1:length_file
     a2e_distance(i) = R.a2e_distance/p2mm;
 end
 
-filename         = [F.filename_raw_hand(1:end-9) '.xlsx'];
+filename         = [F.filename_raw_hand(1:end-12) '.xlsx'];
 % monkey           = ['#' filename(1:3)];
 % m_d              = filename(4:9);
 varNames         = {'ErrorType','Session'};
@@ -168,7 +168,7 @@ diff_apple    = abs(diff_apple);
 apple_num     = length(apple_start);
 drop_id       = [];
 id_action     = zeros(apple_num,9);
-mostpositon   =apple.mostposition;
+mostpositon   = apple.mostposition;
 for j=1:apple_num
     if j<apple_num
         time_window = [apple_start(j):apple_start(j+1)-1];
@@ -176,6 +176,7 @@ for j=1:apple_num
         time_window = [apple_start(j):length(apple_x)];% the last apple show up and wait for 20 seconds
     end
     apple_window    = apple_x(time_window);
+    pks = mean(findpeaks(apple_window));
     id_action (j,1) = j; % trial
     id_action (j,2) = apple_start(j); % apple come out time
 %     diff_apple_window=diff(time_window);
@@ -183,7 +184,7 @@ for j=1:apple_num
     n=1;
     if length(stop_loc)>3
         apple_end = stop_loc(n);
-        while apple_x(time_window(1)+ apple_end-1)>230&&n<=length(stop_loc)-1 
+        while apple_x(time_window(1)+ apple_end-1)>pks+20&&n<=length(stop_loc)-1 
            n=n+1;  
            apple_end = stop_loc(n);
         end
@@ -320,25 +321,27 @@ apple_x(apple_x>350)         = nan; % 340/350 is the board of the glass
 % apple_y(apple_y>pole_y+10)   = nan;
 % apple_y(apple_y<pole_y-10)   = nan;
 % apple_x(isnan(apple_y))      = nan;
-
+backwards_time = 1*30;% backwards by human in 1 second
 % Step 2:delet the part which apple is taken back by the pole by human 
 diff_apple  = diff(apple_x);
 diff_apple  = [nan;diff_apple];
 sign_diff   = sign(diff_apple);% whether more or less than 0
 sign_diff   = [nan;sign_diff];
 sign_diff(isnan(sign_diff))=0;% change into 0 or +-1
-sumwindow_sign   = movsum(sign_diff,6,'omitnan');
-locs_sign        = find(sumwindow_sign>=3);
+sumwindow_sign   = movsum(sign_diff,backwards_time,'omitnan'); % 30 frames=1 seconds
+locs_sign        = find(sumwindow_sign>=backwards_time);
 [counts,centers] = hist(apple_x,20);
 mostposition     = centers(counts==max(counts));
 nframe           = length(Hand.index_tip_x);
 nframes          = 1: nframe;
 % delet the apple was taken back by human only the apple��s coordinates
 % right than mostposition+20
-for i=1:length(locs_sign)-2
-    if apple_x(locs_sign(i))>mostposition+20
-       apple_x(locs_sign(i)-2:locs_sign(i)+2)=nan;
-    end 
+if ~isempty(locs_sign )
+    for i=1:length(locs_sign)-2
+        if  apple_x(locs_sign(i))>mostposition+20
+            apple_x(locs_sign(i)-2:locs_sign(i)+2)=nan;
+        end 
+    end
 end
 figure
 plot(apple_x,nframes,'color','c')
@@ -348,12 +351,13 @@ plot(apple_x,nframes,'color','c')
 apple_start=[];% apple start means from the 1st appearance in the slit
 for appleLength=3:length(apple_x)-5
     if isnan(apple_x(appleLength))&&isnan(apple_x(appleLength-1))&&isnan(apple_x(appleLength-2))
-        if apple_x(appleLength+1)>apple_x(appleLength+2)&&apple_x(appleLength+2)>apple_x(appleLength+3)&&apple_x(appleLength+3)>apple_x(appleLength+4)
-            if apple_x(appleLength+1)>280 % usually choose 280
+        if apple_x(appleLength+1)>apple_x(appleLength+2)&&apple_x(appleLength+2)>apple_x(appleLength+3)...
+                &&apple_x(appleLength+3)>apple_x(appleLength+4)
+            %if apple_x(appleLength+1)>280 % usually choose 280
                 if apple_y(appleLength+1)>190&&apple_y(appleLength+1)<215 % in certain times, there are two apples were captured...
                     apple_start=[apple_start,appleLength+1];    %e.g. 76-7-7
                 end
-            end
+            %end
         end
     end
 end
@@ -371,6 +375,8 @@ end
 % end
 hold on 
 plot(apple_x(apple_start),apple_start,'ro');
+hold on
+plot(Hand.edge_x,nframes,'r')
 title(Hand.filename_raw_hand(1:end-8));
 
 % figure
