@@ -7,7 +7,8 @@ monkey_name = {'2','25','35','43','44','60','70','76','132','133','137','159','1
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'2'};
+monkey_name={'2','35','60','70','132','133','137','159','195'};
+monkey_name={'76'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -42,7 +43,7 @@ filename         = [F.filename_raw_hand(1:end-12) '.xlsx'];
 % monkey           = ['#' filename(1:3)];
 % m_d              = filename(4:9);
 varNames         = {'ErrorType','Session'};
-ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime:ms';'distance(Apple-Edge:mm)'};
+ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime(Valid trials:ms)';'distance(Apple-Edge:mm)'};
 
 T = table(ErrorType,[round(slitE_rate,2);round(wandE_rate,2);round(drop_rate,2);...
 round(RT_valid,2);round(a2e_distance,2)],'VariableNames',varNames);
@@ -161,14 +162,14 @@ apple_y       = apple.apple_y;
 pole_y        = mean(Hand.pole_y,'omitnan');
 edge_x        = Hand.edge_x;
 diff_polex    = diff(Hand.pole_x);
-diff_polex    = abs([nan;diff_polex]);
+% diff_polex    = abs([nan;diff_polex]);
 diff_apple    = diff(apple_x);
 diff_apple    = [nan;diff_apple];
 diff_apple    = abs(diff_apple);
 apple_num     = length(apple_start);
 drop_id       = [];
 id_action     = zeros(apple_num,9);
-mostpositon   = apple.mostposition;
+% mostpositon   = apple.mostposition;
 for j=1:apple_num
     if j<apple_num
         time_window = [apple_start(j):apple_start(j+1)-1];
@@ -267,7 +268,7 @@ for i= 1:trials
                && Hand.index_tip_x(j+1,1)>=Hand.edge_x&&~isnan(apple_x(j))  %index_tip_x(j-2,1)<index_tip_x(j-1,1)&&&&index_tip_x(j+2,1)>index_tip_x(j+1,1)                 
                fwd_time  = [fwd_time,j];                              
                k = j;                                      
-               while k<j+1000                                 
+               while k<j+1000&&k<length(apple_x)                                 
 %                     if Hand.index_tip_x(k+1,1)<Hand.index_tip_x(k,1)&&Hand.index_tip_x(k,1)<=Hand.edge_x...
 %                        &&Hand.index_tip_x(k-1,1)>=Hand.edge_x    %&&index_tip_x(k-1,1)<index_tip_x(k-2,1) index_tip_x(k+2,1)<index_tip_x(k+1,1)&&
                         if Hand.index_tip_x(k,1)>=Hand.edge_x&&Hand.index_tip_x(k+1,1)<=Hand.edge_x
@@ -280,11 +281,11 @@ for i= 1:trials
                 end
             end
         end
-        if isempty(fwd_time)||isempty(back_time)
+        if isempty(fwd_time)||isempty(back_time)||back_time(end)<fwd_time(end)
             id_action(i,6:7) = [nan,nan];
             id_action(i,5)   = 1;%  sometimes the index never overpass the the edge
         else
-             id_action(i,6:7) = [fwd_time(end); back_time(end)];% pass the inde
+            id_action(i,6:7) = [fwd_time(end); back_time(end)];% pass the inde
             index_Y          = Hand.index_tip_y(fwd_time(end):back_time(end));
             [~,touch_time ]  = max(index_Y );
             id_action(i,8)   = touch_time+fwd_time(end);
@@ -554,6 +555,7 @@ index_tip_x          = Hand.index_tip_x;
 Edge_x               = Hand.edge_x;
 
 for i=1:trials
+ 
     time_window  = id_action(i,6)-10:id_action(i,6)+10;
     v_index_x    = [false;diff(index_tip_x(time_window))];
 %     figure
