@@ -8,7 +8,7 @@ monkey_name = {'2','25','35','43','44','60','70','76','132','133','137','159','1
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
 monkey_name={'2','35','60','70','132','133','137','159','195'};
-monkey_name={'76'};
+monkey_name={'70'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
