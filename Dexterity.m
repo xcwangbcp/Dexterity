@@ -1,14 +1,14 @@
 close all
 clear 
-monkey_name = {'2','25','35','43','44','60','70','76','132','133','137','159','187','195'};
+monkey_name = {'2','11','25','35','43','44','60','70','76','132','133','137','159','187','195'};
 %Step1  read the data into the workspace
 % [F.filename_raw_hand,pathname] = uigetfile('*.csv','Pick a hand tracking csv file to load in');
 % [F.raw_hand,F.Txt_hand,~]        = xlsread([pathname,F.filename_raw_hand]);
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'2','35','60','70','132','133','137','159','195'};
-monkey_name={'70'};
+monkey_name={'2','11','43','44','60','132','133','137','159','187'};
+monkey_name={'2'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
