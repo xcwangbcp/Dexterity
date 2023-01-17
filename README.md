@@ -6,8 +6,6 @@ gsp，由于我们装置的限制gsp因为不准确，没有更好的方法得�
 
 2. changeFilesName.m 可以批量修改文件的后缀，或者文件的名字等。
 
-3. MutifileRead,可以批处理所有数据，e.g. 把2021年和2022年数据放到一个文件夹，输出的是同一个group之下的所有猴子在failIndex，speedIndex和dropIndex的平均值，并同时save到一个.xls
-文件和.文件中。
+3. MutifileRead,可以批处理很多数据，处理对象是#1中生成的xls文件， 可以把2021年和2022年数据放到一个文件夹，输出的是同一个group之下的所有猴子在failIndex，speedIndex和dropIndex的平均值，并同时save到一个.xls文件和.mat文件中。
 
-
-4. 统计部分：使用软件Jasp，如果操作可以参考我的石墨文档，需要一个csv文件。
+4. 统计部分：使用软件Jasp，如果操作可以参考我的石墨文档，需要主备一个csv文件。
