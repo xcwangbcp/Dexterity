@@ -1,9 +1,8 @@
 # Dexterity
-本项目是根据已经追踪好的2维（x，y）视频，通过手和苹果的两位坐标，判读被试抓取苹果用的时间，和错误率，苹果掉落率，其中错误里参考日本Nature的工作，是三种错误之和，slithit,wander,
+本项目是根据已经追踪好的2维（x，y）视频，通过手和苹果的两维坐标，判读被试抓取苹果用的时间，和错误率，苹果掉落率，其中错误率参考日本Nature的工作，是三种错误之和，slithit,wander,
 gsp，由于我们装置的限制gsp因为不准确，没有更好的方法得到这个参数，后来放弃。同时由于现实的原因，苹果到边缘的距离也并不十分consistent，所以使用原始数据除以了distance，做了归一化。
 
-1. Dexterity is the main funtion, which need to pepare the data into a folder, but data should be in the same month, 对于11号猴子，it will return e.g '11-08-09.mat',
-’11-08-30.mat‘，每个mat文件了储存了那次实验的分析结果，同一只猴子的当月数据被平均了，具体数据存在了.xls里。
+1. Dexterity is the main funtion, which need to pepare the data into a folder, but data should be in the same month, 返回数据举例：如果11号猴子在8月有两次实验，会得到类似的结果 '11-08-09.mat',’11-08-30.mat‘，每个mat文件了储存了那次实验的分析结果，并且同一只猴子的当月数据以table格式存在了.xls里。
 
 2. changeFilesName.m 可以批量修改文件的后缀，或者文件的名字等。
 
