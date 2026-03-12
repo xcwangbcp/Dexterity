@@ -18,20 +18,23 @@
 % monthNum  = 14;
 clear
 % data       = cell(1,4);% 4 groups
-yearId     = {'2021','2022'};     
-monkeyId   = {'02','25','35','43','44','60','70','76','132','133','137','159','187','195'};
+yearId     = {'2021','2022','2023'};     
+monkeyId   = {'2','11','43','44','60','70','76','132','133','137','159','187','195'};
+% monkeyId   = {'43','44','187'};
 dataType   ='normal';
-failIndex  = [];
-speedIndex = [];
-dropIndex  = [];
+ctrl.failIndex  = [];nose.failIndex =[];gas.failIndex =[];stri.failIndex =[];
+ctrl.speedIndex = [];nose.speedIndex=[];gas.speedIndex=[];stri.speedIndex=[];
+ctrl.dropIndex  = [];nose.dropIndex =[];gas.dropIndex =[];stri.dropIndex =[];
 
-for yearNum=2:2 %length(yearId)
-    k=1;l=1;m=1;n=1;
+for yearNum=3:3 %length(yearId)
+    k=1;%l=1;m=1;n=1;
     year = yearId(yearNum);
     if yearNum==1
         monthId = {'06','07','08','09','10','11','12'};
-    else
+    elseif yearNum==2
         monthId = {'01','02','03','04','05','06','07','08','09'};
+    elseif yearNum==3
+         monthId = {'04','05'};
     end
     monthNum=length(monthId);
     for i=1:monthNum
@@ -41,28 +44,29 @@ for yearNum=2:2 %length(yearId)
             name = monkeyId(j);
             if exist(fileName)
                 [speed,fail,drop] = singleMonth(fileName,dataType);
+                % lk=length(speed)
                 switch char(name)
-                    case {'02','76','35','95','11'} % control
+                    case {'2','76','35','95','11'} % control
 
-                        ctrl.failIndex(k)  = [failIndex,fail];
-                        ctrl.speedIndex(k) = [speedIndex,speed];
-                        ctrl.dropIndex(k)  = [dropIndex,drop];
-                        k=k+1;
+                        ctrl.failIndex  = [ctrl.failIndex,fail];
+                        ctrl.speedIndex = [ctrl.speedIndex,speed];
+                        ctrl.dropIndex  = [ctrl.dropIndex,drop];
+                        % k=k+1;
                     case {'133','132','13'}   % nose
-                        nose.failIndex(l)  = [failIndex,fail];
-                        nose.speedIndex(l) = [speedIndex,speed];
-                        nose.dropIndex(l)  = [dropIndex,drop]; 
-                        l=l+1;
+                        nose.failIndex  = [nose.failIndex,fail];
+                        nose.speedIndex = [nose.speedIndex,speed];
+                        nose.dropIndex  = [nose.dropIndex,drop]; 
+                        % l=l+1;
                     case {'137','195','159','25','60','70'}%gas
-                        gas.failIndex(m)  = [failIndex,fail];
-                        gas.speedIndex(m) = [speedIndex,speed];
-                        gas.dropIndex(m)  = [dropIndex,drop];        
-                        m=m+1;
+                        gas.failIndex  = [gas.failIndex,fail];
+                        gas.speedIndex = [gas.speedIndex,speed];
+                        gas.dropIndex  = [gas.dropIndex,drop];        
+                        % m=m+1;
                     case {'187','43','44'}      %stritum
-                        stri.failIndex(n)  = [failIndex,fail];
-                        stri.speedIndex(n) = [speedIndex,speed];
-                        stri.dropIndex(n)  = [dropIndex,drop];
-                        n=n+1;
+                        stri.failIndex  = [stri.failIndex,fail];
+                        stri.speedIndex = [stri.speedIndex,speed];
+                        stri.dropIndex  = [stri.dropIndex,drop];
+                        % n=n+1;
                 end
             end 
         end
@@ -88,28 +92,27 @@ function [speedIndex,failIndex,dropIndex] = singleMonth(fileName,dataType)
 %     [fileL,~] = size(list);
 %     for fileNum=1:fileL
         tableMonkey  = xlsread(fileName);
-        distance     = tableMonkey(5,1);
-        slitRate     = tableMonkey(1,1);
-        wandRate     = tableMonkey(2,1);
-        dropRate     = tableMonkey(3,1);
+        [~,c]        = size(tableMonkey);
+        distance     = tableMonkey(5,1:c);
+        slitRate     = tableMonkey(1,1:c);
+        wandRate     = tableMonkey(2,1:c);
+        dropRate     = tableMonkey(3,1:c);
         totalRate    = (slitRate+wandRate);
         if dropRate>0.35
            dropRate=0.35;
         end
         
-        if  totalRate>1
-            totalRate=1;
-        end
+        totalRate(totalRate>1)=1;
         if strcmpi(dataType,'raw')
-            fetchtT      = tableMonkey(4,1);
+            fetchtT      = tableMonkey(4,1:c);
             dropIndex    = dropRate;%/distance;
             speedIndex   = fetchtT;%/distance;
             failIndex    = totalRate;%/distance;
         else
-            fetchtT      = tableMonkey(4,1)/distance;
-            dropIndex    = dropRate/distance;
-            speedIndex   = fetchtT/distance;
-            failIndex    = totalRate/distance;
+            fetchtT      = tableMonkey(4,1:c);
+            dropIndex    = dropRate./distance;
+            speedIndex   = distance*100./fetchtT;
+            failIndex    = totalRate./distance;
         end
 
 end
@@ -142,7 +145,7 @@ function draw(data)
     xticklabels(groupname)
     axis([0 5  0 100 ])
     title('speedIndex')
-    ylabel('s/m')
+    ylabel('cm/s')
     
     subplot(312)
     bar(1:4,failIndex,0.4,'FaceColor',[1 1 1])

@@ -7,8 +7,8 @@ monkey_name = {'2','11','25','35','43','44','60','70','76','132','133','137','15
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'2','11','43','44','60','132','133','137','159','187'};
-monkey_name={'2'};
+monkey_name={'2','11','43','44','60','70','76','132','133','137','159','187','195'};
+monkey_name={'132','133','137','159','187','195'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -115,6 +115,12 @@ R.id_action   = action.action;
 R.a2e_distance= action.distance;    
 R.savefile    = erroGrisp.filename(1:end-5);
 save([R.savefile '.mat'],'R');
+varNames         = {'ErrorType','Session'};
+ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime(Valid trials:ms)';'distance(Apple-Edge:mm)'};
+p2mm             = 3; %1mm=3pixles
+T2 = table(ErrorType,[round(R.slitE_rate ,2);round(R.wandE_rate,2);round(R.drop_rate,2);...
+round(mean(R.RT_valid),2);round(R.a2e_distance/p2mm,2)],'VariableNames',varNames);
+writetable(T2,[R.savefile '.xlsx'])
 end
 
 
