@@ -7,8 +7,8 @@ monkey_name = {'2','11','25','35','43','44','60','70','76','132','133','137','15
 % F.filename_raw_apple           = uigetfile('*.csv','Pick an apple tracking csv file to load in ');
 % [F.raw_apple,F.Txt_apple,~]      = xlsread([pathname,F.filename_raw_apple]);
 % raw_apple = table2array(readtable(filename_raw_apple));
-monkey_name={'2','11','43','44','60','70','76','132','133','137','159','187','195'};
-monkey_name={'132','133','137','159','187','195'};
+monkey_name={'76','11','43','44','60','70','76','132','133','137','159','187','195'};
+% monkey_name={'132','133','137','159','187','195'};
 monkey_num = length(monkey_name );
 p2mm       = 3; %1mm=3pixles
 for j= 1:monkey_num
@@ -25,8 +25,22 @@ for i= 1:length_file
     F.filename_raw_hand         = list(i,:);
     F.filename_raw_apple        = [F.filename_raw_hand(1:end-9) '-apple.csv'];
     F
-    [F.raw_hand,F.Txt_hand,~]   = xlsread(F.filename_raw_hand);
-    [F.raw_apple,F.Txt_apple,~] = xlsread(F.filename_raw_apple);
+    try
+        T_hand = readtable(F.filename_raw_hand, 'ReadVariableNames', true);
+        F.Txt_hand = T_hand.Properties.VariableNames; % 提取表头 (对应原来的 Txt_hand)
+        F.raw_hand = table2array(T_hand); % 提取数值矩阵 (对应原来的 raw_hand)
+    catch ME
+        error(['读取 Hand 文件失败: ' F.filename_raw_hand '. 错误信息: ' ME.message]);
+    end
+
+    % 2. 读取 Apple 文件
+    try
+        T_apple = readtable(F.filename_raw_apple, 'ReadVariableNames', true);
+        F.Txt_apple = T_apple.Properties.VariableNames; % 提取表头
+        F.raw_apple = table2array(T_apple); % 提取数值矩阵
+    catch ME
+        error(['读取 Apple 文件失败: ' F.filename_raw_apple '. 错误信息: ' ME.message]);
+    end
     R                           = singlefile(F);
 %     RT_valid                    = mean([RT_valid; R.RT_valid(R.RT_valid<1000)]);
 
@@ -43,10 +57,33 @@ filename         = [F.filename_raw_hand(1:end-12) '.xlsx'];
 % monkey           = ['#' filename(1:3)];
 % m_d              = filename(4:9);
 varNames         = {'ErrorType','Session'};
-ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime(Valid trials:ms)';'distance(Apple-Edge:mm)'};
+ ErrorType        = {'slitErroRate';'wandErroRate';'dropErroRate';'fetchTime(Valid trials:ms)';'distance(Apple-Edge:mm)'};
+% 
+% T = table(ErrorType,[round(slitE_rate,2);round(wandE_rate,2);round(drop_rate,2);...
+% round(RT_valid,2);round(a2e_distance,2)],'VariableNames',varNames);
 
-T = table(ErrorType,[round(slitE_rate,2);round(wandE_rate,2);round(drop_rate,2);...
-round(RT_valid,2);round(a2e_distance,2)],'VariableNames',varNames);
+dataMatrix = [round(slitE_rate,2); 
+              round(wandE_rate,2); 
+              round(drop_rate,2); 
+              round(RT_valid,2); 
+              round(a2e_distance,2)]';
+
+% 2. 生成列名 (Session 1, Session 2, ...)
+% 2. 生成列名：Session_1, Session_2 ...
+sessionNames = cell(1, length_file);
+for k = 1:length_file
+    sessionNames{k} = ['Session_' num2str(k)];
+end
+
+% 3. 生成 Table
+% 第一步：先把 ErrorType 放进去
+T = table(ErrorType, 'VariableNames', {'ErrorType'});
+
+% 第二步：把数据矩阵的每一列依次加进去
+% 这样可以完美避开 RowNames 的所有坑
+for k = 1:length_file
+    T.(sessionNames{k}) = dataMatrix(:, k);
+end
 writetable(T,filename)
 % the following write the data into an excel
 % array    ={'Monkey','M/D','E_total','E_slithit','E_wand','E_grisp','RT','E_drop','D_apple2edge';...
@@ -640,30 +677,34 @@ end
 
 % find the relative columns for each traking piont
 function [column]  = findcolum(Txt,A,B,C,D)
-        switch nargin  
-            case 2
-                 Aa        = strcmp(Txt(1:end),A);
-                 column(1) = find(Aa==1);
-            case 3
-                Aa        = strcmp(Txt(1:end),A);       
-                Ba        = strcmp(Txt(1:end),B);
-                column(1) = find(Aa==1);
-                column(2) = find(Ba==1);
-            case 4
-                Aa        = strcmp(Txt(1:end),A);       
-                Ba        = strcmp(Txt(1:end),B);
-                Ca        = strcmp(Txt(1:end),C);
-                column(1) = find(Aa==1);
-                column(2) = find(Ba==1);
-                column(3) = find(Ca==1);
-            otherwise
-                Aa        = strcmp(Txt(1:end),A);       
-                Ba        = strcmp(Txt(1:end),B);
-                Ca        = strcmp(Txt(1:end),C);
-                Da        = strcmp(Txt(1:end),D);
-                column(1) = find(Aa==1);
-                column(2) = find(Ba==1);
-                column(3) = find(Ca==1);
-                column(4) = find(Da==1);
-        end          
+ column = [];
+    
+    % 确定要查找的变量列表
+    if nargin == 2
+        targets = {A};
+    elseif nargin == 3
+        targets = {A, B};
+    elseif nargin == 4
+        targets = {A, B, C};
+    else
+        targets = {A, B, C, D};
+    end
+    
+    for i = 1:length(targets)
+        target = strtrim(targets{i});
+        
+        % 核心匹配：忽略大小写，去除空格
+        % 这里 Txt 已经是 readtable 给出的标准 cell 了
+        idx = find(strcmpi(strtrim(Txt), target), 1);
+        
+        if isempty(idx)
+            % 友好报错
+            fprintf('!!! 错误：找不到列名 [%s] !!!\n', target);
+            fprintf('当前文件可用的前10个列名：\n');
+            disp(Txt(1:min(10, end)));
+            error('列名匹配失败，请检查CSV文件表头。');
+        end
+        
+        column(i) = idx;
+    end
 end
